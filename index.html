@@ -53,7 +53,10 @@
   #clock { font-size:clamp(46px, 15vw, 60px); font-weight:600; line-height:1; letter-spacing:-.045em; font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
   #dial.idle #clock { color:#C4C7CD; }
   #hint { font-size:13px; font-weight:500; color:#6A707A; }
-  #cancel { display:block; margin:14px auto 0; height:40px; padding:0 18px; border-radius:999px; color:var(--muted); font-size:14px; font-weight:500; }
+  #adjust { display:flex; align-items:center; justify-content:center; gap:10px; margin:18px auto 0; }
+  #adjust button { height:38px; min-width:58px; padding:0 14px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; }
+  #startedAt { min-width:132px; text-align:center; font-size:14px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  #cancel { display:block; margin:6px auto 0; height:40px; padding:0 18px; border-radius:999px; color:var(--muted); font-size:14px; font-weight:500; }
 
   .field {
     width:100%; height:52px; padding:0 20px; border-radius:999px; outline:none;
@@ -162,6 +165,11 @@
         <span id="hint"></span>
       </span>
     </button>
+    <div id="adjust" class="hidden">
+      <button id="later" aria-label="Move start 5 minutes later">−5</button>
+      <span id="startedAt"></span>
+      <button id="earlier" aria-label="Move start 5 minutes earlier">+5</button>
+    </div>
     <button id="cancel" class="hidden">Discard this session</button>
     <input id="title" class="field" placeholder="What are you working on? (optional)" autocomplete="off">
     <div id="cats"></div>
@@ -300,6 +308,11 @@
     dial.style.setProperty('--ring', shown ? hex(shown.color) : '#16181C');
     dial.classList.toggle('idle', !running);
     $('cancel').classList.toggle('hidden', !running);
+    $('adjust').classList.toggle('hidden', !running);
+    if (running) {
+      $('startedAt').textContent = 'Started ' + fmtTime(running.start);
+      $('later').disabled = Date.now() - running.start < 60000;
+    }
     if (!holding) setRing(running ? 1 : 0);
     $('what').textContent = shown ? shown.cat : 'Pick a category';
     $('sub').textContent = running ? (running.title || '') : '';
@@ -307,7 +320,7 @@
       : act === 'switch' ? 'Hold to switch to ' + (selected || running.cat)
       : act === 'stop' ? 'Hold to stop' : 'then hold here';
     if (running) {
-      const upd = () => $('clock').textContent = fmt(Date.now() - running.start);
+      const upd = () => { $('clock').textContent = fmt(Date.now() - running.start); $('later').disabled = Date.now() - running.start < 60000; };
       upd(); tick = setInterval(upd, 1000);
     } else $('clock').textContent = '0:00:00';
   }
@@ -342,23 +355,54 @@
   dial.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') holdEnd(false); });
   $('title').addEventListener('input', () => { if (running) renderTimer(); });
 
+  // ----- forgot to start? move the start time -----
+  const NUDGE_MIN = 5;
+  let startSync = 0;
+  function nudge(min) {
+    if (!running) return;
+    running.start = Math.min(Date.now(), running.start - min * 60000);
+    renderTimer();
+    clearTimeout(startSync);
+    startSync = setTimeout(syncStart, 700);
+  }
+  function syncStart() {
+    clearTimeout(startSync); startSync = 0;
+    if (!running) return;
+    const want = running.start;
+    server('setStart', [want])
+      .then(s => { if (running && running.id === s.id) say('Start moved to ' + fmtTime(s.start)); })
+      .catch(e => say("Couldn't move the start time: " + e.message));
+  }
+  $('earlier').onclick = () => nudge(NUDGE_MIN);
+  $('later').onclick = () => nudge(-NUDGE_MIN);
+
   function start(c) {
+    if (startSync) syncStart();
     const prev = running, title = $('title').value.trim(), my = ++seq;
-    running = { cat: c.name, color: c.color, title, start: Date.now() };
+    const t0 = Date.now();
+    running = { cat: c.name, color: c.color, title, start: t0 };
     selected = c.name;
     $('title').value = ''; $('title').blur();
     renderTimer(); say('');
     server('start', [c.name, title])
-      .then(s => { if (my === seq) { running = s; renderTimer(); say('Logging to ' + S.calendar); } })
+      .then(s => {
+        if (my !== seq) return;
+        const shift = running ? running.start - t0 : 0;   // +5 tapped before the server answered
+        running = s;
+        if (shift) { running.start += shift; syncStart(); }
+        renderTimer(); say('Logging to ' + S.calendar);
+      })
       .catch(e => { if (my === seq) { running = prev; renderTimer(); } say("Couldn't start: " + e.message); });
   }
   function stop() {
+    if (startSync) syncStart();
     const prev = running, my = ++seq;
     running = null; renderTimer();
     server('stop').then(() => say('Saved to ' + S.calendar))
       .catch(e => { if (my === seq) { running = prev; renderTimer(); } say("Couldn't save: " + e.message); });
   }
   $('cancel').onclick = () => {
+    clearTimeout(startSync); startSync = 0;
     const prev = running, my = ++seq;
     running = null; renderTimer();
     server('cancel').then(() => say('Discarded'))

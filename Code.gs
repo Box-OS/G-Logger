@@ -86,6 +86,20 @@ function stop() {
   return null;
 }
 
+// Moves the running timer's start time (for when you forgot to start it).
+function setStart(ms) {
+  const s = readJSON('running');
+  if (!s) throw new Error('No timer is running.');
+  const now = Date.now();
+  ms = Math.min(Number(ms), now);
+  if (!(ms > now - 24 * 3600e3)) throw new Error('The start time has to be within the last 24 hours.');
+  const ev = runningEvent_(s);
+  if (ev) ev.setTime(new Date(ms), new Date(Math.max(now, ms + 60000)));
+  s.start = ms;
+  props().setProperty('running', JSON.stringify(s));
+  return s;
+}
+
 // Deletes the running timer's event (for accidental starts).
 function cancel() {
   const s = readJSON('running');
