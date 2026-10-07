@@ -1,0 +1,46 @@
+# Uploads the code to Google Apps Script whenever it changes on main,
+# so the test (/dev) URL always runs the latest commit.
+# Run it manually with "deploy" ticked to also update the live (/exec) URL.
+#
+# One-time setup (repo Settings -> Secrets and variables -> Actions):
+#   CLASPRC_JSON   contents of ~/.clasprc.json after `clasp login`
+#   SCRIPT_ID      the scriptId from .clasp.json
+#   DEPLOYMENT_ID  the ID of the live deployment (Deploy -> Manage deployments)
+name: Apps Script
+
+on:
+  push:
+    branches: [main]
+    paths: [Code.gs, index.html, appsscript.json]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Also update the live /exec deployment
+        type: boolean
+        default: false
+
+concurrency: apps-script
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install -g @google/clasp
+      - name: Write clasp credentials
+        env:
+          CLASPRC: ${{ secrets.CLASPRC_JSON }}
+          SCRIPT_ID: ${{ secrets.SCRIPT_ID }}
+        run: |
+          printf '%s' "$CLASPRC" > ~/.clasprc.json
+          printf '{"scriptId":"%s","rootDir":"."}' "$SCRIPT_ID" > .clasp.json
+      - name: Upload code
+        run: clasp push --force
+      - name: Update live deployment
+        if: ${{ inputs.deploy }}
+        env:
+          DEPLOYMENT_ID: ${{ secrets.DEPLOYMENT_ID }}
+        run: clasp deploy -i "$DEPLOYMENT_ID" -d "GitHub ${GITHUB_SHA::7}"
