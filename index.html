@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<style>
+  :root { --bg:#fff; --fg:#111; --muted:#777; --card:#f3f3f3; --line:#8883; --go:#1a73e8; --stop:#d93025; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#121212; --fg:#eee; --muted:#999; --card:#222; } }
+  * { box-sizing:border-box; }
+  body { margin:0 auto; padding:20px 16px; font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--fg); max-width:440px; }
+  header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  h1 { font-size:18px; margin:0; }
+  .hidden { display:none !important; }
+  #now { background:var(--card); border-radius:14px; padding:18px; text-align:center; margin-bottom:18px; }
+  #what { font-size:15px; color:var(--muted); min-height:20px; }
+  #clock { font-size:44px; font-variant-numeric:tabular-nums; font-weight:600; margin:6px 0; }
+  input, select { font-size:16px; padding:12px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
+  #title { width:100%; margin-bottom:12px; }
+  #cats { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  button { font-size:16px; padding:14px; border:0; border-radius:12px; cursor:pointer; background:var(--card); color:var(--fg); }
+  .cat { display:flex; align-items:center; gap:10px; text-align:left; }
+  .dot { width:12px; height:12px; border-radius:50%; flex:none; }
+  .cat.active { outline:3px solid var(--go); }
+  .icon { background:none; padding:6px 8px; font-size:20px; }
+  #stop { width:100%; background:var(--stop); color:#fff; font-weight:600; }
+  .link { width:100%; margin-top:8px; background:none; color:var(--muted); font-size:14px; }
+  button:disabled { opacity:.4; }
+  #msg { text-align:center; color:var(--muted); font-size:13px; min-height:18px; margin-top:10px; }
+  /* settings */
+  label { display:block; font-size:13px; color:var(--muted); margin:0 0 6px; }
+  #calName { width:100%; margin-bottom:6px; }
+  .hint { font-size:12px; color:var(--muted); margin:0 0 18px; }
+  .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .row input { flex:1; min-width:0; }
+  .row select { width:120px; padding:12px 6px; }
+  .row .dot { width:16px; height:16px; }
+  .row .icon { font-size:18px; color:var(--muted); }
+  #save { width:100%; background:var(--go); color:#fff; font-weight:600; margin-top:14px; }
+</style>
+</head>
+<body>
+  <header><h1 id="heading">Time Log</h1><button class="icon" id="gear" title="Settings">⚙</button></header>
+
+  <main id="timer">
+    <div id="now"><div id="what">Not tracking</div><div id="clock">0:00:00</div></div>
+    <input id="title" placeholder="What exactly? (optional, e.g. EECS3101 PS2)">
+    <div id="cats"></div>
+    <button id="stop" disabled>Stop</button>
+    <button id="cancel" class="link" disabled>Discard current timer</button>
+  </main>
+
+  <main id="settings" class="hidden">
+    <label for="calName">Log to calendar</label>
+    <input id="calName" placeholder="Log">
+    <p class="hint">Created if it doesn't exist. Type <b>primary</b> for your main calendar.</p>
+    <label>Categories</label>
+    <div id="catRows"></div>
+    <button id="addCat" class="link">+ Add category</button>
+    <button id="save">Save</button>
+    <button id="back" class="link">Cancel</button>
+  </main>
+
+  <div id="msg"></div>
+
+<script>
+  let S = null, COLORS = {}, running = null, tick = null;
+  const $ = id => document.getElementById(id);
+  const hex = c => (COLORS[c] || ['', '#888'])[1];
+  const fmt = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 3600)}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+  const say = t => $('msg').textContent = t || '';
+  const busy = (on, text) => {
+    document.querySelectorAll('button').forEach(b => b.disabled = on || ((b.id === 'stop' || b.id === 'cancel') && !running));
+    say(text);
+  };
+  const call = (fn, args, ok, text) => {
+    busy(true, text);
+    google.script.run.withSuccessHandler(r => { busy(false); ok(r); })
+      .withFailureHandler(e => busy(false, 'Error: ' + e.message))[fn](...args);
+  };
+
+  // ---------- timer view ----------
+  function renderCats() {
+    $('cats').innerHTML = '';
+    S.cats.forEach(c => {
+      const b = document.createElement('button');
+      b.className = 'cat';
+      b.innerHTML = `<span class="dot" style="background:${hex(c.color)}"></span><span></span>`;
+      b.lastChild.textContent = c.name;
+      b.dataset.name = c.name;
+      b.onclick = () => call('start', [c.name, $('title').value.trim()], s => { running = s; $('title').value = ''; renderTimer(); say('Logging to “' + S.calendar + '” ✓'); }, 'Starting…');
+      $('cats').appendChild(b);
+    });
+  }
+
+  function renderTimer() {
+    clearInterval(tick);
+    document.querySelectorAll('.cat').forEach(b => b.classList.toggle('active', !!running && b.dataset.name === running.cat));
+    if (running) {
+      $('what').textContent = running.title ? `${running.cat} · ${running.title}` : running.cat;
+      const upd = () => $('clock').textContent = fmt(Date.now() - running.start);
+      upd(); tick = setInterval(upd, 1000);
+    } else { $('what').textContent = 'Not tracking'; $('clock').textContent = '0:00:00'; }
+    busy(false, $('msg').textContent);
+  }
+
+  $('stop').onclick = () => call('stop', [], () => { running = null; renderTimer(); say('Saved ✓'); }, 'Saving…');
+  $('cancel').onclick = () => call('cancel', [], () => { running = null; renderTimer(); say('Discarded'); }, 'Discarding…');
+
+  // ---------- settings view ----------
+  function catRow(c) {
+    const row = document.createElement('div');
+    row.className = 'row';
+    const dot = document.createElement('span'); dot.className = 'dot';
+    const name = document.createElement('input'); name.value = c.name; name.placeholder = 'Category name';
+    const sel = document.createElement('select');
+    Object.entries(COLORS).forEach(([id, [label]]) => sel.add(new Option(label, id, false, id === c.color)));
+    const paint = () => dot.style.background = hex(sel.value);
+    sel.onchange = paint; paint();
+    const del = document.createElement('button'); del.className = 'icon'; del.textContent = '✕'; del.title = 'Remove';
+    del.onclick = () => row.remove();
+    row.append(dot, name, sel, del);
+    return row;
+  }
+
+  function openSettings() {
+    $('calName').value = S.calendar;
+    $('catRows').innerHTML = '';
+    S.cats.forEach(c => $('catRows').appendChild(catRow(c)));
+    show('settings');
+  }
+
+  function show(view) {
+    $('timer').classList.toggle('hidden', view !== 'timer');
+    $('settings').classList.toggle('hidden', view !== 'settings');
+    $('gear').classList.toggle('hidden', view !== 'timer');
+    $('heading').textContent = view === 'timer' ? 'Time Log' : 'Settings';
+    say('');
+  }
+
+  $('gear').onclick = openSettings;
+  $('back').onclick = () => show('timer');
+  $('addCat').onclick = () => { const r = catRow({ name: '', color: 'GRAY' }); $('catRows').appendChild(r); r.querySelector('input').focus(); };
+  $('save').onclick = () => {
+    const cats = [...$('catRows').children].map(r => ({ name: r.querySelector('input').value, color: r.querySelector('select').value }));
+    call('saveSettings', [{ calendar: $('calName').value, cats }], init => { S = init.settings; renderCats(); show('timer'); renderTimer(); say('Settings saved ✓'); }, 'Saving settings…');
+  };
+
+  // ---------- boot ----------
+  call('getInit', [], init => { S = init.settings; COLORS = init.colors; running = init.running; renderCats(); renderTimer(); }, 'Loading…');
+</script>
+</body>
+</html>
