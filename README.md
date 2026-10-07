@@ -34,25 +34,24 @@ State (settings and the currently running timer) is stored per user in `Properti
 
 ## Run your own copy
 
-Only needed if you want to modify the code; otherwise just use the link above.
+Only needed if you want to modify the code; otherwise just use the link above. Uses [clasp](https://github.com/google/clasp), Google's command-line tool for Apps Script (requires Node.js).
 
-
-**Option A: Apps Script editor**
-
-1. Create a new project at [script.google.com](https://script.google.com).
-2. Copy in `Code.gs`, add an HTML file named `index` with the contents of `index.html`, and replace the manifest with `appsscript.json` (enable *Show "appsscript.json"* in Project Settings).
-3. **Deploy → New deployment → Web app**, then authorize Calendar access.
-4. Open the web app URL and add it to your phone's home screen.
-
-**Option B: [clasp](https://github.com/google/clasp)**
+1. Turn on the **Google Apps Script API** at [script.google.com/home/usersettings](https://script.google.com/home/usersettings).
+2. Clone the repo and push it to a new Apps Script project:
 
 ```bash
 npm install -g @google/clasp
+git clone https://github.com/Box-OS/g-log.git && cd g-log
 clasp login
-clasp create --type webapp --title "Time Log"
-clasp push
+clasp create --type webapp --title "G-Log" --rootDir .
+git checkout appsscript.json   # clasp create replaces the manifest; restore the repo's version
+clasp push --force
 clasp deploy
 ```
+
+3. Open the web app URL that `clasp deploy` prints (or find it under **Deploy → Manage deployments** in the editor) and authorize Calendar access.
+
+While developing, `clasp push --watch` uploads every saved change, and the editor's **Deploy → Test deployments** URL always runs the latest code.
 
 ## Tech
 
