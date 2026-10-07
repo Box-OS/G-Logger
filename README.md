@@ -1,6 +1,16 @@
-# GLOG — Google Calendar Time Logger
+# G-Log — Google Calendar Time Logger
 
 A one-tap start/stop timer that logs how you spend your time directly to Google Calendar. Built as a Google Apps Script web app, so it runs on Google's servers with no backend, database, or hosting of its own, and works from any phone or laptop browser.
+
+## Try it
+
+**[Open G-Log](https://script.google.com/macros/s/AKfycbxrJuZHOgyapJ5-xch7WRGy6MVgpkcG3ndafGpZyFknDFQ5Y07TQqJw8CCXciXdVmq2Og/exec)**. Any Google account works, and nothing to install.
+
+1. Open the link and sign in with Google.
+2. Approve Calendar access. The app is not verified by Google yet, so you'll see a warning first: choose **Advanced → Go to … (unsafe)** to continue.
+3. Add it to your home screen: on iPhone, Safari → Share → **Add to Home Screen**; on Android, Chrome → ⋮ → **Add to Home screen**.
+
+The app runs as *you*: it only ever touches your own calendar, and creates a calendar named **Log** on first use (changeable in ⚙). Your categories and running timer are stored privately in your Google account; the developer can't see them.
 
 ## Features
 
@@ -18,11 +28,14 @@ A one-tap start/stop timer that logs how you spend your time directly to Google 
 | --- | --- |
 | `Code.gs` | Server side: serves the page (`doGet`), and exposes `start`, `stop`, `cancel`, `getInit` and `saveSettings`, which use `CalendarApp` to create and update events. |
 | `index.html` | Client UI (vanilla HTML/CSS/JS). Calls the server through `google.script.run`. |
-| `appsscript.json` | Manifest: V8 runtime, `America/Toronto` time zone, web app runs as the deploying user and is accessible only to them. |
+| `appsscript.json` | Manifest: V8 runtime; the web app runs as the user accessing it and is open to anyone with a Google account, so each person logs to their own calendar. |
 
-State (settings and the currently running timer) is stored per user in `PropertiesService`, so the timer survives closing the tab or switching devices.
+State (settings and the currently running timer) is stored per user in `PropertiesService`, so the timer survives closing the tab or switching devices, and every user's data stays separate.
 
-## Setup
+## Run your own copy
+
+Only needed if you want to modify the code; otherwise just use the link above.
+
 
 **Option A: Apps Script editor**
 
