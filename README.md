@@ -14,19 +14,19 @@ The app runs as *you*: it only ever touches your own calendar, and creates a cal
 
 ## Features
 
-- **One-tap tracking**: tap a category to start a timer; tap another to switch, which closes the previous block automatically.
-- **Calendar as the database**: every session becomes a real, color-coded Google Calendar event, so your week is visible alongside your schedule.
-- **Live running indicator**: the event is created immediately with a ⏱ marker and finalized with the true end time on stop.
-- **Optional detail**: add a note per session (e.g. `Deep work · EECS3101 PS2`).
-- **Discard**: delete an accidental start without leaving a stray event.
-- **In-app settings**: choose the target calendar (created automatically if missing, or `primary`) and edit categories and their Google Calendar colors.
-- **Mobile-first UI** with automatic dark mode.
+- **Hold to start**: pick a category, then press and hold the big timer button; a ring in the category's colour fills and the session starts. Hold again to stop, or pick another category and hold to switch.
+- **Calendar as the database**: every session becomes a real, colour-coded Google Calendar event, so your week sits alongside your schedule.
+- **History and editing**: browse past days with per-day totals and a category split; tap any entry to change its category, details or times, delete it, or add one you forgot to time.
+- **Instant UI**: taps update the screen immediately while saves happen in the background, and roll back with a clear message if a save fails.
+- **Optional detail** per session (e.g. `Deep work · EECS3101 PS2`) and a discard button for accidental starts.
+- **In-app settings**: choose the target calendar (created automatically if missing, or `primary`) and edit categories and their colours.
+- **Light and dark mode**, following the system by default with a manual toggle; mobile-first layout.
 
 ## How it works
 
 | File | Role |
 | --- | --- |
-| `Code.gs` | Server side: serves the page (`doGet`), and exposes `start`, `stop`, `cancel`, `getInit` and `saveSettings`, which use `CalendarApp` to create and update events. |
+| `Code.gs` | Server side: serves the page (`doGet`), and exposes `start`, `stop`, `cancel`, `getInit`, `saveSettings`, and `history`, `saveEntry`, `deleteEntry` for the log editor, all built on `CalendarApp`. |
 | `index.html` | Client UI (vanilla HTML/CSS/JS). Calls the server through `google.script.run`. |
 | `appsscript.json` | Manifest: V8 runtime; the web app runs as the user accessing it and is open to anyone with a Google account, so each person logs to their own calendar. |
 

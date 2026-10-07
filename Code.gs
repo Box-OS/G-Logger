@@ -95,3 +95,59 @@ function cancel() {
   props().deleteProperty('running');
   return null;
 }
+
+// ---------- history ----------
+
+// Calendar color id ("1".."11") -> our color key.
+function colorKeyOf_(ev) {
+  const c = ev.getColor();
+  return Object.keys(COLORS).find(k => String(CalendarApp.EventColor[k]) === String(c)) || 'GRAY';
+}
+
+// Logged sessions between two timestamps (ms), excluding the running one.
+function history(fromMs, toMs) {
+  const st = getSettings();
+  const cal = getCalendar_(st.calendar);
+  const r = readJSON('running');
+  return cal.getEvents(new Date(fromMs), new Date(toMs))
+    .filter(e => !e.isAllDayEvent() && !(r && e.getId() === r.id))
+    .map(e => {
+      const t = e.getTitle().replace(/^⏱\s*/, '');
+      const i = t.indexOf(' · ');
+      const cat = i >= 0 ? t.slice(0, i) : t;
+      const known = st.cats.find(c => c.name === cat);
+      return {
+        id: e.getId(), cat, title: i >= 0 ? t.slice(i + 3) : '',
+        color: known ? known.color : colorKeyOf_(e),
+        start: e.getStartTime().getTime(), end: e.getEndTime().getTime(),
+      };
+    });
+}
+
+// Creates (no id) or updates (id) a logged session.
+function saveEntry(x) {
+  const st = getSettings();
+  const cat = st.cats.find(c => c.name === x.cat);
+  if (!cat) throw new Error('Unknown category: ' + x.cat);
+  const start = new Date(Number(x.start)), end = new Date(Number(x.end));
+  if (!(end > start)) throw new Error('End time must be after the start time.');
+  const cal = getCalendar_(st.calendar);
+  const title = label(cat.name, String(x.title || '').trim());
+  let ev;
+  if (x.id) {
+    ev = cal.getEventById(x.id);
+    if (!ev) throw new Error('That entry no longer exists in your calendar.');
+    ev.setTitle(title);
+    ev.setTime(start, end);
+  } else {
+    ev = cal.createEvent(title, start, end);
+  }
+  ev.setColor(CalendarApp.EventColor[cat.color]);
+  return ev.getId();
+}
+
+function deleteEntry(id) {
+  const ev = getCalendar_(getSettings().calendar).getEventById(id);
+  if (ev) ev.deleteEvent();
+  return null;
+}

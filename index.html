@@ -2,150 +2,526 @@
 <html>
 <head>
 <base target="_top">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#fff; --fg:#111; --muted:#777; --card:#f3f3f3; --line:#8883; --go:#1a73e8; --stop:#d93025; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#121212; --fg:#eee; --muted:#999; --card:#222; } }
+  :root { --paper:#F1F2F4; --surface:#FFFFFF; --ink:#16181C; --muted:#6A707A; --line:rgba(22,24,28,.09); --danger:#C5221F; color-scheme:light; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --paper:#121316; --surface:#1D1F23; --ink:#F1F2F4; --muted:#8E95A0; --line:rgba(241,242,244,.08); --danger:#F28B82; color-scheme:dark; }
+  }
+  :root[data-theme="dark"] { --paper:#121316; --surface:#1D1F23; --ink:#F1F2F4; --muted:#8E95A0; --line:rgba(241,242,244,.08); --danger:#F28B82; color-scheme:dark; }
+
   * { box-sizing:border-box; }
-  body { margin:0 auto; padding:20px 16px; font-family:-apple-system,system-ui,sans-serif; background:var(--bg); color:var(--fg); max-width:440px; }
-  header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-  h1 { font-size:18px; margin:0; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    margin:0 auto; padding:16px 16px 40px; max-width:460px; min-height:100vh;
+    font-family:'Geist',-apple-system,system-ui,sans-serif; font-size:16px; line-height:1.4;
+    background:var(--paper); color:var(--ink); -webkit-font-smoothing:antialiased;
+    transition:background-color .25s ease, color .25s ease;
+  }
   .hidden { display:none !important; }
-  #now { background:var(--card); border-radius:14px; padding:18px; text-align:center; margin-bottom:18px; }
-  #what { font-size:15px; color:var(--muted); min-height:20px; }
-  #clock { font-size:44px; font-variant-numeric:tabular-nums; font-weight:600; margin:6px 0; }
-  input, select { font-size:16px; padding:12px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--fg); }
-  #title { width:100%; margin-bottom:12px; }
-  #cats { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
-  button { font-size:16px; padding:14px; border:0; border-radius:12px; cursor:pointer; background:var(--card); color:var(--fg); }
-  .cat { display:flex; align-items:center; gap:10px; text-align:left; }
-  .dot { width:12px; height:12px; border-radius:50%; flex:none; }
-  .cat.active { outline:3px solid var(--go); }
-  .icon { background:none; padding:6px 8px; font-size:20px; }
-  #stop { width:100%; background:var(--stop); color:#fff; font-weight:600; }
-  .link { width:100%; margin-top:8px; background:none; color:var(--muted); font-size:14px; }
-  button:disabled { opacity:.4; }
-  #msg { text-align:center; color:var(--muted); font-size:13px; min-height:18px; margin-top:10px; }
-  /* settings */
-  label { display:block; font-size:13px; color:var(--muted); margin:0 0 6px; }
-  #calName { width:100%; margin-bottom:6px; }
-  .hint { font-size:12px; color:var(--muted); margin:0 0 18px; }
-  .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
-  .row input { flex:1; min-width:0; }
-  .row select { width:120px; padding:12px 6px; }
-  .row .dot { width:16px; height:16px; }
-  .row .icon { font-size:18px; color:var(--muted); }
-  #save { width:100%; background:var(--go); color:#fff; font-weight:600; margin-top:14px; }
+  button, input, select { font:inherit; color:inherit; }
+  button { border:0; background:none; cursor:pointer; -webkit-tap-highlight-color:transparent; transition:transform .12s ease, background-color .2s ease, opacity .2s ease; }
+  button:active { transform:scale(.97); }
+  button:disabled { opacity:.45; cursor:default; transform:none; }
+  :focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+
+  header { display:flex; align-items:center; gap:8px; height:44px; margin-bottom:18px; }
+  h1 { margin:0 auto 0 0; font-size:19px; font-weight:700; letter-spacing:-.025em; }
+  .round { width:40px; height:40px; flex:none; border-radius:50%; background:var(--surface); border:1px solid var(--line); display:grid; place-items:center; color:var(--muted); }
+  .round svg { width:19px; height:19px; }
+  #tabs { display:flex; padding:3px; border-radius:999px; background:var(--surface); border:1px solid var(--line); }
+  #tabs button { height:32px; padding:0 14px; border-radius:999px; font-size:14px; font-weight:500; color:var(--muted); }
+  #tabs button.on { background:var(--ink); color:var(--paper); }
+
+  /* ---------- timer: the big hold-to-start button ---------- */
+  #dial {
+    position:relative; display:block; margin:6px auto 0; width:min(80vw, 300px); aspect-ratio:1; border-radius:50%;
+    background:#FFFFFF; color:#16181C; padding:0;
+    box-shadow:0 24px 60px rgba(22,24,28,.10), 0 2px 8px rgba(22,24,28,.06);
+    user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:none;
+    transition:transform .25s cubic-bezier(.2,.8,.2,1);
+  }
+  #dial:active, #dial.holding { transform:scale(.965); }
+  #dial svg { position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg); pointer-events:none; }
+  #dial .track { stroke:rgba(22,24,28,.06); }
+  #dial .ring { stroke:var(--ring, #16181C); transition:stroke .3s ease; }
+  .face { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; pointer-events:none; }
+  #what { font-size:15px; font-weight:600; letter-spacing:-.01em; max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #sub { font-size:13px; color:#6A707A; max-width:66%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-height:18px; margin-top:-4px; }
+  #clock { font-size:clamp(46px, 15vw, 60px); font-weight:600; line-height:1; letter-spacing:-.045em; font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
+  #dial.idle #clock { color:#C4C7CD; }
+  #hint { font-size:13px; font-weight:500; color:#6A707A; }
+  #cancel { display:block; margin:14px auto 0; height:40px; padding:0 18px; border-radius:999px; color:var(--muted); font-size:14px; font-weight:500; }
+
+  .field {
+    width:100%; height:52px; padding:0 20px; border-radius:999px; outline:none;
+    background:var(--surface); border:1px solid var(--line); font-size:16px;
+  }
+  .field::placeholder { color:var(--muted); }
+  .field:focus { border-color:color-mix(in srgb, var(--ink) 35%, transparent); }
+  #title { height:54px; padding:0 22px; margin:26px 0 12px; }
+
+  #cats { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .cat {
+    display:flex; align-items:center; gap:11px; height:56px; padding:0 18px; border-radius:999px; text-align:left;
+    background:var(--surface); border:1px solid var(--line); font-size:16px; font-weight:500;
+  }
+  .cat span:last-child { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dot { width:10px; height:10px; border-radius:50%; flex:none; background:var(--cc); }
+  .cat.active { background:var(--cc); color:var(--on-cc); border-color:transparent; }
+  .cat.active .dot { background:var(--on-cc); }
+
+  #msg { text-align:center; color:var(--muted); font-size:13px; min-height:18px; margin-top:16px; }
+
+  /* ---------- history ---------- */
+  .bar-row { display:flex; gap:8px; }
+  .pillbtn { height:46px; padding:0 20px; border-radius:999px; font-size:15px; font-weight:600; }
+  .pillbtn.primary { background:var(--ink); color:var(--paper); }
+  .pillbtn.soft { background:var(--surface); border:1px solid var(--line); }
+  .day { margin-top:24px; }
+  .day h2 { display:flex; justify-content:space-between; align-items:baseline; margin:0 4px 8px; font-size:15px; font-weight:600; letter-spacing:-.01em; }
+  .day h2 span { color:var(--muted); font-weight:500; font-variant-numeric:tabular-nums; }
+  .split { display:flex; height:6px; border-radius:999px; overflow:hidden; gap:2px; margin:0 4px 12px; }
+  .split i { display:block; height:100%; background:var(--cc); border-radius:999px; }
+  .entry {
+    display:flex; align-items:center; gap:12px; width:100%; padding:13px 16px 13px 14px; margin-bottom:8px; text-align:left;
+    background:var(--surface); border:1px solid var(--line); border-radius:20px;
+  }
+  .entry .stripe { width:4px; align-self:stretch; border-radius:2px; background:var(--cc); flex:none; }
+  .entry .main { flex:1; min-width:0; }
+  .entry .t1 { font-size:15px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .entry .t1 em { font-style:normal; font-weight:400; color:var(--muted); }
+  .entry .t2 { font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .entry .dur { font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .empty { color:var(--muted); text-align:center; font-size:15px; margin:48px 12px; }
+  #more { display:block; margin:18px auto 0; }
+
+  /* edit sheet */
+  #sheet { position:fixed; inset:0; z-index:10; display:flex; align-items:flex-end; justify-content:center; background:rgba(10,11,13,.42); }
+  .card {
+    width:100%; max-width:460px; max-height:92vh; overflow:auto; padding:22px 16px calc(18px + env(safe-area-inset-bottom));
+    background:var(--paper); border-radius:28px 28px 0 0; animation:rise .28s cubic-bezier(.2,.8,.2,1);
+  }
+  @keyframes rise { from { transform:translateY(40px); opacity:0; } }
+  .card h3 { margin:0 4px 16px; font-size:18px; font-weight:700; letter-spacing:-.02em; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .chip { display:flex; align-items:center; gap:8px; height:40px; padding:0 14px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:14px; font-weight:500; }
+  .chip.active { background:var(--cc); color:var(--on-cc); border-color:transparent; }
+  .chip.active .dot { background:var(--on-cc); }
+  .when { display:grid; gap:10px; margin-top:12px; }
+  .when > div { display:flex; align-items:center; gap:10px; }
+  .when label { margin:0 0 0 8px; width:44px; flex:none; font-weight:500; color:var(--muted); }
+  .when .field { flex:1; min-width:0; padding:0 16px; font-size:15px; }
+  #sheetDur { margin:12px 6px 0; font-size:13px; color:var(--muted); min-height:18px; }
+  #sheetErr { margin:8px 6px 0; font-size:13px; color:var(--danger); min-height:18px; }
+  .sheet-actions { display:flex; gap:8px; margin-top:8px; }
+  .sheet-actions .primary { flex:1; }
+  #delEntry { color:var(--danger); }
+
+  /* ---------- settings ---------- */
+  label { display:block; font-size:14px; font-weight:600; margin:6px 0 8px; }
+  .hint { font-size:13px; color:var(--muted); margin:8px 4px 26px; }
+  .crow { margin-bottom:8px; }
+  .row { display:flex; gap:8px; align-items:center; }
+  .row .field { flex:1; min-width:0; height:50px; }
+  .swatch { width:50px; height:50px; flex:none; border-radius:50%; background:var(--surface); border:1px solid var(--line); display:grid; place-items:center; }
+  .swatch i { width:22px; height:22px; border-radius:50%; background:var(--cc); }
+  .row .x { flex:none; width:36px; height:36px; color:var(--muted); font-size:15px; }
+  .palette { display:flex; flex-wrap:wrap; gap:10px; padding:12px 6px 6px; }
+  .palette button { width:32px; height:32px; border-radius:50%; background:var(--cc); box-shadow:0 0 0 2px var(--paper), 0 0 0 0 var(--ink); }
+  .palette button.on { box-shadow:0 0 0 2px var(--paper), 0 0 0 4px var(--ink); }
+  .ghost { color:var(--muted); font-size:15px; font-weight:500; height:44px; width:100%; }
+  #save { width:100%; height:54px; margin-top:18px; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
 </style>
 </head>
 <body>
-  <header><h1 id="heading">Time Log</h1><button class="icon" id="gear" title="Settings">⚙</button></header>
+  <header>
+    <h1 id="heading">G-Log</h1>
+    <nav id="tabs">
+      <button data-view="timer" class="on">Timer</button>
+      <button data-view="history">History</button>
+    </nav>
+    <button class="round" id="theme" aria-label="Switch light or dark mode"></button>
+    <button class="round" id="gear" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+    </button>
+  </header>
 
+  <!-- ===== timer ===== -->
   <main id="timer">
-    <div id="now"><div id="what">Not tracking</div><div id="clock">0:00:00</div></div>
-    <input id="title" placeholder="What exactly? (optional, e.g. EECS3101 PS2)">
+    <button id="dial" class="idle" aria-live="polite">
+      <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="46" fill="none" stroke-width="2.4"/><circle class="ring" id="ring" cx="50" cy="50" r="46" fill="none" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
+      <span class="face">
+        <span id="what">Loading…</span>
+        <span id="sub"></span>
+        <span id="clock">0:00:00</span>
+        <span id="hint"></span>
+      </span>
+    </button>
+    <button id="cancel" class="hidden">Discard this session</button>
+    <input id="title" class="field" placeholder="What are you working on? (optional)" autocomplete="off">
     <div id="cats"></div>
-    <button id="stop" disabled>Stop</button>
-    <button id="cancel" class="link" disabled>Discard current timer</button>
   </main>
 
+  <!-- ===== history ===== -->
+  <main id="history" class="hidden">
+    <div class="bar-row"><button class="pillbtn primary" id="addEntry">Add entry</button></div>
+    <div id="histList"></div>
+    <button class="pillbtn soft hidden" id="more">Show earlier</button>
+  </main>
+
+  <!-- ===== settings ===== -->
   <main id="settings" class="hidden">
     <label for="calName">Log to calendar</label>
-    <input id="calName" placeholder="Log">
-    <p class="hint">Created if it doesn't exist. Type <b>primary</b> for your main calendar.</p>
+    <input id="calName" class="field" placeholder="Log">
+    <p class="hint">Created if it doesn't exist. Type <b>primary</b> to use your main calendar.</p>
     <label>Categories</label>
     <div id="catRows"></div>
-    <button id="addCat" class="link">+ Add category</button>
-    <button id="save">Save</button>
-    <button id="back" class="link">Cancel</button>
+    <button id="addCat" class="ghost">+ Add category</button>
+    <button id="save" class="pillbtn primary">Save settings</button>
+    <button id="back" class="ghost">Cancel</button>
+    <div id="setMsg" class="hint" style="text-align:center"></div>
   </main>
 
   <div id="msg"></div>
 
-<script>
-  let S = null, COLORS = {}, running = null, tick = null;
-  const $ = id => document.getElementById(id);
-  const hex = c => (COLORS[c] || ['', '#888'])[1];
-  const fmt = ms => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 3600)}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
-  const say = t => $('msg').textContent = t || '';
-  const busy = (on, text) => {
-    document.querySelectorAll('button').forEach(b => b.disabled = on || ((b.id === 'stop' || b.id === 'cancel') && !running));
-    say(text);
-  };
-  const call = (fn, args, ok, text) => {
-    busy(true, text);
-    google.script.run.withSuccessHandler(r => { busy(false); ok(r); })
-      .withFailureHandler(e => busy(false, 'Error: ' + e.message))[fn](...args);
-  };
+  <!-- ===== edit sheet ===== -->
+  <div id="sheet" class="hidden">
+    <div class="card" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <h3 id="sheetTitle">Edit entry</h3>
+      <div class="chips" id="sheetCats"></div>
+      <input id="sheetText" class="field" placeholder="Details (optional)" autocomplete="off">
+      <div class="when">
+        <div><label for="sheetStart">Start</label><input id="sheetStart" class="field" type="datetime-local"></div>
+        <div><label for="sheetEnd">End</label><input id="sheetEnd" class="field" type="datetime-local"></div>
+      </div>
+      <div id="sheetDur"></div>
+      <div id="sheetErr"></div>
+      <div class="sheet-actions">
+        <button class="pillbtn soft" id="sheetCancel">Cancel</button>
+        <button class="pillbtn soft" id="delEntry">Delete</button>
+        <button class="pillbtn primary" id="sheetSave">Save</button>
+      </div>
+    </div>
+  </div>
 
-  // ---------- timer view ----------
+<script>
+  let S = null, COLORS = {}, running = null, tick = null, seq = 0, view = 'timer';
+  const $ = id => document.getElementById(id);
+  const hex = c => (COLORS[c] || ['', '#888888'])[1];
+  const fmt = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 3600)}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
+  const fmtDur = ms => { const m = Math.round(ms / 60000); return m < 1 ? '<1m' : m < 60 ? m + 'm' : Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : ''); };
+  const fmtTime = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const say = t => { $('msg').textContent = t || ''; };
+  const catByName = n => S.cats.find(c => c.name === n);
+
+  // White or ink text, whichever contrasts more with the colour.
+  function onColor(h) {
+    const lin = v => (v /= 255) <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4);
+    const n = parseInt(h.slice(1), 16);
+    const L = .2126 * lin(n >> 16) + .7152 * lin(n >> 8 & 255) + .0722 * lin(n & 255);
+    return 1.05 / (L + .05) >= (L + .05) / .06 ? '#FFFFFF' : '#16181C';
+  }
+  const paint = (el, colorKey) => { el.style.setProperty('--cc', hex(colorKey)); el.style.setProperty('--on-cc', onColor(hex(colorKey))); };
+
+  // Server calls run one at a time, in order, while the UI updates instantly.
+  let queue = Promise.resolve();
+  function server(fn, args) {
+    const p = queue.then(() => new Promise((ok, fail) =>
+      google.script.run.withSuccessHandler(ok).withFailureHandler(fail)[fn](...(args || []))));
+    queue = p.catch(() => {});
+    return p;
+  }
+
+  // ---------- light / dark ----------
+  const SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4L6 18M18 6l1.4-1.4"/></svg>';
+  const MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
+  let theme = null;
+  try { theme = localStorage.getItem('glog-theme'); } catch (e) {}
+  const isDark = () => theme ? theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  function applyTheme() {
+    if (theme) document.documentElement.dataset.theme = theme; else delete document.documentElement.dataset.theme;
+    $('theme').innerHTML = isDark() ? SUN : MOON;
+  }
+  $('theme').onclick = () => {
+    theme = isDark() ? 'light' : 'dark';
+    try { localStorage.setItem('glog-theme', theme); } catch (e) {}
+    applyTheme();
+  };
+  applyTheme();
+
+  // ---------- views ----------
+  function show(v) {
+    view = v;
+    ['timer', 'history', 'settings'].forEach(id => $(id).classList.toggle('hidden', id !== v));
+    document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+    $('tabs').classList.toggle('hidden', v === 'settings');
+    $('gear').classList.toggle('hidden', v === 'settings');
+    $('heading').textContent = v === 'settings' ? 'Settings' : 'G-Log';
+    say(''); $('setMsg').textContent = '';
+    if (v === 'history') loadHistory();
+  }
+  document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => show(b.dataset.view));
+
+  // ---------- timer ----------
+  let selected = null;
+  const HOLD_MS = 700;
+
   function renderCats() {
     $('cats').innerHTML = '';
     S.cats.forEach(c => {
       const b = document.createElement('button');
-      b.className = 'cat';
-      b.innerHTML = `<span class="dot" style="background:${hex(c.color)}"></span><span></span>`;
+      b.className = 'cat'; paint(b, c.color);
+      b.innerHTML = '<span class="dot"></span><span></span>';
       b.lastChild.textContent = c.name;
       b.dataset.name = c.name;
-      b.onclick = () => call('start', [c.name, $('title').value.trim()], s => { running = s; $('title').value = ''; renderTimer(); say('Logging to “' + S.calendar + '” ✓'); }, 'Starting…');
+      b.onclick = () => { selected = c.name; renderTimer(); };
       $('cats').appendChild(b);
     });
   }
 
+  function holdAction() {
+    if (!running) return selected ? 'start' : null;
+    if ((selected && selected !== running.cat) || $('title').value.trim()) return 'switch';
+    return 'stop';
+  }
+  function setRing(p) { const r = $('ring'); r.setAttribute('stroke-dasharray', `${(p * 100).toFixed(2)} 100`); r.style.opacity = p > 0.005 ? 1 : 0; }
+
   function renderTimer() {
     clearInterval(tick);
-    document.querySelectorAll('.cat').forEach(b => b.classList.toggle('active', !!running && b.dataset.name === running.cat));
+    if (selected && !catByName(selected)) selected = null;
+    document.querySelectorAll('.cat').forEach(b => b.classList.toggle('active', b.dataset.name === selected));
+    const dial = $('dial'), act = holdAction();
+    const shown = running ? running : (selected ? { cat: selected, color: catByName(selected).color } : null);
+    dial.style.setProperty('--ring', shown ? hex(shown.color) : '#16181C');
+    dial.classList.toggle('idle', !running);
+    $('cancel').classList.toggle('hidden', !running);
+    if (!holding) setRing(running ? 1 : 0);
+    $('what').textContent = shown ? shown.cat : 'Pick a category';
+    $('sub').textContent = running ? (running.title || '') : '';
+    $('hint').textContent = act === 'start' ? 'Hold to start'
+      : act === 'switch' ? 'Hold to switch to ' + (selected || running.cat)
+      : act === 'stop' ? 'Hold to stop' : 'then hold here';
     if (running) {
-      $('what').textContent = running.title ? `${running.cat} · ${running.title}` : running.cat;
       const upd = () => $('clock').textContent = fmt(Date.now() - running.start);
       upd(); tick = setInterval(upd, 1000);
-    } else { $('what').textContent = 'Not tracking'; $('clock').textContent = '0:00:00'; }
-    busy(false, $('msg').textContent);
+    } else $('clock').textContent = '0:00:00';
   }
 
-  $('stop').onclick = () => call('stop', [], () => { running = null; renderTimer(); say('Saved ✓'); }, 'Saving…');
-  $('cancel').onclick = () => call('cancel', [], () => { running = null; renderTimer(); say('Discarded'); }, 'Discarding…');
+  let holding = false, holdT0 = 0, raf = 0;
+  function holdStart(e) {
+    if (e) e.preventDefault();
+    if (holding || !holdAction()) return;
+    holding = true; holdT0 = performance.now(); $('dial').classList.add('holding');
+    const draining = holdAction() === 'stop';
+    const step = now => {
+      const p = Math.min(1, (now - holdT0) / HOLD_MS);
+      setRing(draining ? 1 - p : p);
+      if (p >= 1) { holdEnd(true); return; }
+      raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+  }
+  function holdEnd(done) {
+    if (!holding) return;
+    holding = false; cancelAnimationFrame(raf); $('dial').classList.remove('holding');
+    if (done === true) {
+      if (navigator.vibrate) navigator.vibrate(18);
+      if (holdAction() === 'stop') stop(); else start(catByName(selected || running.cat));
+    } else renderTimer();
+  }
+  const dial = $('dial');
+  dial.addEventListener('pointerdown', holdStart);
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => dial.addEventListener(ev, () => holdEnd(false)));
+  dial.addEventListener('contextmenu', e => e.preventDefault());
+  dial.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) holdStart(e); });
+  dial.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') holdEnd(false); });
+  $('title').addEventListener('input', () => { if (running) renderTimer(); });
 
-  // ---------- settings view ----------
+  function start(c) {
+    const prev = running, title = $('title').value.trim(), my = ++seq;
+    running = { cat: c.name, color: c.color, title, start: Date.now() };
+    selected = c.name;
+    $('title').value = ''; $('title').blur();
+    renderTimer(); say('');
+    server('start', [c.name, title])
+      .then(s => { if (my === seq) { running = s; renderTimer(); say('Logging to ' + S.calendar); } })
+      .catch(e => { if (my === seq) { running = prev; renderTimer(); } say("Couldn't start: " + e.message); });
+  }
+  function stop() {
+    const prev = running, my = ++seq;
+    running = null; renderTimer();
+    server('stop').then(() => say('Saved to ' + S.calendar))
+      .catch(e => { if (my === seq) { running = prev; renderTimer(); } say("Couldn't save: " + e.message); });
+  }
+  $('cancel').onclick = () => {
+    const prev = running, my = ++seq;
+    running = null; renderTimer();
+    server('cancel').then(() => say('Discarded'))
+      .catch(e => { if (my === seq) { running = prev; renderTimer(); } say("Couldn't discard: " + e.message); });
+  };
+
+  // ---------- history ----------
+  let histDays = 7, hist = [];
+  const dayStart = ms => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  function dayLabel(ms) {
+    const today = dayStart(Date.now());
+    if (ms === today) return 'Today';
+    if (ms === today - 864e5) return 'Yesterday';
+    return new Date(ms).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+  }
+
+  function loadHistory() {
+    if (!hist.length) $('histList').innerHTML = '<p class="empty">Loading your log…</p>';
+    const from = dayStart(Date.now() - (histDays - 1) * 864e5);
+    server('history', [from, Date.now() + 60000])
+      .then(list => { hist = list; renderHistory(); })
+      .catch(e => { $('histList').innerHTML = ''; say("Couldn't load history: " + e.message); });
+  }
+
+  function renderHistory() {
+    const box = $('histList'); box.innerHTML = '';
+    $('more').classList.remove('hidden');
+    if (!hist.length) {
+      box.innerHTML = `<p class="empty">Nothing logged in the last ${histDays} days. Start a timer, or add an entry by hand.</p>`;
+      return;
+    }
+    const days = new Map();
+    hist.slice().sort((a, b) => b.start - a.start).forEach(e => {
+      const k = dayStart(e.start); if (!days.has(k)) days.set(k, []); days.get(k).push(e);
+    });
+    days.forEach((list, k) => {
+      const total = list.reduce((t, e) => t + (e.end - e.start), 0);
+      const sec = document.createElement('section'); sec.className = 'day';
+      const h = document.createElement('h2');
+      h.innerHTML = '<b></b><span></span>'; h.firstChild.textContent = dayLabel(k); h.lastChild.textContent = fmtDur(total);
+      sec.appendChild(h);
+      // per-category split for the day
+      const byCat = {}; list.forEach(e => { byCat[e.cat] = byCat[e.cat] || { ms: 0, color: e.color }; byCat[e.cat].ms += e.end - e.start; });
+      const split = document.createElement('div'); split.className = 'split';
+      Object.values(byCat).sort((a, b) => b.ms - a.ms).forEach(v => { const i = document.createElement('i'); paint(i, v.color); i.style.flex = v.ms; split.appendChild(i); });
+      sec.appendChild(split);
+      list.forEach(e => {
+        const b = document.createElement('button'); b.className = 'entry'; paint(b, e.color);
+        b.innerHTML = '<span class="stripe"></span><span class="main"><div class="t1"></div><div class="t2"></div></span><span class="dur"></span>';
+        const t1 = b.querySelector('.t1'); t1.textContent = e.cat;
+        if (e.title) { const em = document.createElement('em'); em.textContent = ' · ' + e.title; t1.appendChild(em); }
+        b.querySelector('.t2').textContent = fmtTime(e.start) + ' – ' + fmtTime(e.end);
+        b.querySelector('.dur').textContent = fmtDur(e.end - e.start);
+        b.onclick = () => openSheet(e);
+        sec.appendChild(b);
+      });
+      box.appendChild(sec);
+    });
+  }
+  $('more').onclick = () => { histDays += 7; loadHistory(); };
+  $('addEntry').onclick = () => openSheet(null);
+
+  // ----- edit sheet -----
+  let editing = null, sheetCat = null, delArmed = false;
+  const toLocal = ms => { const d = new Date(ms); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
+  const fromLocal = v => v ? new Date(v).getTime() : NaN;
+
+  function openSheet(e) {
+    editing = e;
+    const now = Date.now();
+    sheetCat = e ? (catByName(e.cat) ? e.cat : null) : (selected || S.cats[0].name);
+    $('sheetTitle').textContent = e ? 'Edit entry' : 'Add entry';
+    $('sheetText').value = e ? e.title : '';
+    $('sheetStart').value = toLocal(e ? e.start : now - 30 * 60000);
+    $('sheetEnd').value = toLocal(e ? e.end : now);
+    $('delEntry').classList.toggle('hidden', !e);
+    $('delEntry').textContent = 'Delete'; delArmed = false;
+    $('sheetErr').textContent = e && !sheetCat ? `“${e.cat}” isn't one of your categories. Pick one to save.` : '';
+    renderSheetCats(); updDur();
+    $('sheet').classList.remove('hidden');
+  }
+  function closeSheet() { $('sheet').classList.add('hidden'); editing = null; }
+  function renderSheetCats() {
+    const box = $('sheetCats'); box.innerHTML = '';
+    S.cats.forEach(c => {
+      const b = document.createElement('button'); b.className = 'chip' + (c.name === sheetCat ? ' active' : ''); paint(b, c.color);
+      b.innerHTML = '<span class="dot"></span><span></span>'; b.lastChild.textContent = c.name;
+      b.onclick = () => { sheetCat = c.name; $('sheetErr').textContent = ''; renderSheetCats(); };
+      box.appendChild(b);
+    });
+  }
+  function updDur() {
+    const s = fromLocal($('sheetStart').value), e = fromLocal($('sheetEnd').value);
+    $('sheetDur').textContent = e > s ? 'Duration ' + fmtDur(e - s) : '';
+  }
+  ['sheetStart', 'sheetEnd'].forEach(id => $(id).addEventListener('input', updDur));
+  $('sheetCancel').onclick = closeSheet;
+  $('sheet').addEventListener('click', e => { if (e.target === $('sheet')) closeSheet(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sheet').classList.contains('hidden')) closeSheet(); });
+
+  $('sheetSave').onclick = () => {
+    const start = fromLocal($('sheetStart').value), end = fromLocal($('sheetEnd').value);
+    if (!sheetCat) { $('sheetErr').textContent = 'Pick a category.'; return; }
+    if (!(end > start)) { $('sheetErr').textContent = 'End time must be after the start time.'; return; }
+    const entry = { id: editing && editing.id, cat: sheetCat, title: $('sheetText').value.trim(), start, end };
+    $('sheetSave').disabled = true; $('sheetSave').textContent = 'Saving…';
+    server('saveEntry', [entry])
+      .then(() => { closeSheet(); say(entry.id ? 'Entry updated' : 'Entry added'); loadHistory(); })
+      .catch(e => { $('sheetErr').textContent = "Couldn't save: " + e.message; })
+      .finally(() => { $('sheetSave').disabled = false; $('sheetSave').textContent = 'Save'; });
+  };
+  $('delEntry').onclick = () => {
+    if (!delArmed) { delArmed = true; $('delEntry').textContent = 'Tap again to delete'; return; }
+    const id = editing.id;
+    hist = hist.filter(x => x.id !== id); renderHistory(); closeSheet();
+    server('deleteEntry', [id]).then(() => say('Entry deleted'))
+      .catch(e => { say("Couldn't delete: " + e.message); loadHistory(); });
+  };
+
+  // ---------- settings ----------
   function catRow(c) {
-    const row = document.createElement('div');
-    row.className = 'row';
-    const dot = document.createElement('span'); dot.className = 'dot';
-    const name = document.createElement('input'); name.value = c.name; name.placeholder = 'Category name';
-    const sel = document.createElement('select');
-    Object.entries(COLORS).forEach(([id, [label]]) => sel.add(new Option(label, id, false, id === c.color)));
-    const paint = () => dot.style.background = hex(sel.value);
-    sel.onchange = paint; paint();
-    const del = document.createElement('button'); del.className = 'icon'; del.textContent = '✕'; del.title = 'Remove';
-    del.onclick = () => row.remove();
-    row.append(dot, name, sel, del);
-    return row;
+    const wrap = document.createElement('div'); wrap.className = 'crow'; wrap.dataset.color = c.color;
+    const row = document.createElement('div'); row.className = 'row';
+    const sw = document.createElement('button'); sw.className = 'swatch'; sw.innerHTML = '<i></i>'; sw.setAttribute('aria-label', 'Choose colour');
+    const name = document.createElement('input'); name.className = 'field'; name.value = c.name; name.placeholder = 'Category name';
+    const del = document.createElement('button'); del.className = 'x'; del.textContent = '✕'; del.setAttribute('aria-label', 'Remove category');
+    del.onclick = () => wrap.remove();
+    const pal = document.createElement('div'); pal.className = 'palette hidden';
+    const sync = () => {
+      paint(sw, wrap.dataset.color);
+      pal.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.color === wrap.dataset.color));
+    };
+    Object.entries(COLORS).forEach(([id, [label]]) => {
+      const b = document.createElement('button'); b.dataset.color = id; b.title = label; b.setAttribute('aria-label', label); paint(b, id);
+      b.onclick = () => { wrap.dataset.color = id; sync(); pal.classList.add('hidden'); };
+      pal.appendChild(b);
+    });
+    sw.onclick = () => pal.classList.toggle('hidden');
+    row.append(sw, name, del); wrap.append(row, pal); sync();
+    return wrap;
   }
-
   function openSettings() {
     $('calName').value = S.calendar;
     $('catRows').innerHTML = '';
     S.cats.forEach(c => $('catRows').appendChild(catRow(c)));
     show('settings');
   }
-
-  function show(view) {
-    $('timer').classList.toggle('hidden', view !== 'timer');
-    $('settings').classList.toggle('hidden', view !== 'settings');
-    $('gear').classList.toggle('hidden', view !== 'timer');
-    $('heading').textContent = view === 'timer' ? 'Time Log' : 'Settings';
-    say('');
-  }
-
   $('gear').onclick = openSettings;
   $('back').onclick = () => show('timer');
   $('addCat').onclick = () => { const r = catRow({ name: '', color: 'GRAY' }); $('catRows').appendChild(r); r.querySelector('input').focus(); };
   $('save').onclick = () => {
-    const cats = [...$('catRows').children].map(r => ({ name: r.querySelector('input').value, color: r.querySelector('select').value }));
-    call('saveSettings', [{ calendar: $('calName').value, cats }], init => { S = init.settings; renderCats(); show('timer'); renderTimer(); say('Settings saved ✓'); }, 'Saving settings…');
+    const cats = [...$('catRows').children].map(r => ({ name: r.querySelector('input').value, color: r.dataset.color }));
+    $('save').disabled = true; $('save').textContent = 'Saving…';
+    server('saveSettings', [{ calendar: $('calName').value, cats }])
+      .then(init => { S = init.settings; hist = []; renderCats(); show('timer'); renderTimer(); say('Settings saved'); })
+      .catch(e => { $('setMsg').textContent = "Couldn't save settings: " + e.message; })
+      .finally(() => { $('save').disabled = false; $('save').textContent = 'Save settings'; });
   };
 
   // ---------- boot ----------
-  call('getInit', [], init => { S = init.settings; COLORS = init.colors; running = init.running; renderCats(); renderTimer(); }, 'Loading…');
+  server('getInit')
+    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; selected = running ? running.cat : null; renderCats(); renderTimer(); })
+    .catch(e => { $('what').textContent = "Couldn't load"; $('sub').textContent = e.message; });
 </script>
 </body>
 </html>
