@@ -4,7 +4,7 @@
 <base target="_top">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root { --paper:#F1F2F4; --surface:#FFFFFF; --ink:#16181C; --muted:#6A707A; --line:rgba(22,24,28,.09); --danger:#C5221F; color-scheme:light; }
   @media (prefers-color-scheme: dark) {
@@ -138,6 +138,47 @@
   .ghost { color:var(--muted); font-size:15px; font-weight:500; height:44px; width:100%; }
   #save { width:100%; height:54px; margin-top:18px; }
 
+  /* ---------- focus screen ---------- */
+  #focus { position:fixed; inset:0; z-index:20; overflow:hidden; color:var(--on-f); touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
+  #liquid { position:absolute; inset:0; background:var(--f); transform:translateY(100%); will-change:transform; }
+  #liquid svg { position:absolute; left:0; bottom:calc(100% - 1px); width:200%; height:26px; fill:var(--f); animation:wave 1.4s linear infinite; }
+  @keyframes wave { to { transform:translateX(-50%); } }
+  .fcontent { position:absolute; inset:0; display:flex; flex-direction:column; padding:max(16px, env(safe-area-inset-top)) 22px max(28px, env(safe-area-inset-bottom)); opacity:0; transition:opacity .4s ease; }
+  #focus.full .fcontent { opacity:var(--fade, 1); }
+  #focus.full.draining .fcontent { transition:none; }
+  .ftop { display:flex; justify-content:space-between; align-items:center; }
+  .fbtn { height:42px; min-width:42px; padding:0 16px; border-radius:999px; display:grid; place-items:center; background:color-mix(in srgb, var(--on-f) 16%, transparent); color:var(--on-f); font-size:15px; font-weight:600; }
+  .fbtn svg { width:20px; height:20px; }
+  .fmid { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
+  #fclock { font-size:clamp(72px, 23vw, 136px); font-weight:600; line-height:1; letter-spacing:-.055em; font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
+  #fmeta { font-size:15px; opacity:.75; text-align:center; max-width:90%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #fhint { font-size:13px; opacity:.6; margin-bottom:12px; }
+  #fcat { margin:0; font-size:clamp(56px, 17vw, 116px); font-weight:800; line-height:.88; letter-spacing:-.05em; overflow-wrap:anywhere; }
+
+  /* ---------- today timeline ---------- */
+  #today { margin-top:36px; }
+  .thead { display:flex; justify-content:space-between; align-items:center; margin:0 4px 14px; }
+  .thead h2 { margin:0; font-size:17px; font-weight:700; letter-spacing:-.02em; }
+  .thead h2 span { margin-left:6px; font-size:15px; font-weight:500; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .zoom { display:flex; gap:6px; }
+  .zoom button { width:34px; height:34px; border-radius:50%; background:var(--surface); border:1px solid var(--line); color:var(--muted); font-size:18px; line-height:1; }
+  #tl { position:relative; touch-action:pan-y; }
+  #tl .axis { position:absolute; left:64px; top:0; bottom:0; width:2px; margin-left:-1px; border-radius:1px; background:color-mix(in srgb, var(--ink) 11%, transparent); }
+  #tl .hr { position:absolute; left:0; width:46px; text-align:right; font-size:11px; color:var(--muted); transform:translateY(-50%); font-variant-numeric:tabular-nums; }
+  #tl .now { position:absolute; left:52px; width:24px; height:2px; margin-top:-1px; border-radius:1px; background:var(--ink); opacity:.5; }
+  .blob { position:absolute; left:64px; width:16px; margin-left:-8px; padding:0; border-radius:999px; background:var(--cc); box-shadow:0 0 0 3px var(--paper); transition:transform .15s ease, height .25s ease, top .25s ease; }
+  .blob:hover { transform:scaleX(1.25); }
+  .blob.live { animation:breathe 2.4s ease-in-out infinite; }
+  @keyframes breathe { 50% { box-shadow:0 0 0 3px var(--paper), 0 0 0 9px color-mix(in srgb, var(--cc) 22%, transparent); } }
+  .blabel { position:absolute; left:86px; font-size:13px; font-weight:500; color:var(--muted); transform:translateY(-50%); white-space:nowrap; pointer-events:none; }
+  #peek { position:absolute; left:84px; right:0; z-index:2; padding:12px 14px; border-radius:18px; background:var(--surface); border:1px solid var(--line); box-shadow:0 14px 34px rgba(10,11,13,.14); animation:pop .18s ease-out; }
+  @keyframes pop { from { transform:scale(.96); opacity:0; } }
+  #peek .p1 { font-size:15px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #peek .p1 em { font-style:normal; font-weight:400; color:var(--muted); }
+  #peek .p2 { font-size:13px; color:var(--muted); margin-top:2px; font-variant-numeric:tabular-nums; }
+  #peek button { margin-top:10px; height:34px; padding:0 14px; border-radius:999px; background:var(--ink); color:var(--paper); font-size:13px; font-weight:600; }
+  .tl-empty { color:var(--muted); font-size:14px; margin:0 4px 10px; }
+
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
 </style>
 </head>
@@ -173,6 +214,13 @@
     <button id="cancel" class="hidden">Discard this session</button>
     <input id="title" class="field" placeholder="What are you working on? (optional)" autocomplete="off">
     <div id="cats"></div>
+    <section id="today">
+      <div class="thead">
+        <h2>Today<span id="todayTotal"></span></h2>
+        <div class="zoom"><button id="zoomOut" aria-label="Zoom out">−</button><button id="zoomIn" aria-label="Zoom in">+</button></div>
+      </div>
+      <div id="tl"></div>
+    </section>
   </main>
 
   <!-- ===== history ===== -->
@@ -196,6 +244,23 @@
   </main>
 
   <div id="msg"></div>
+
+  <!-- ===== focus screen ===== -->
+  <div id="focus" class="hidden" aria-live="polite">
+    <div id="liquid"><svg viewBox="0 0 1200 26" preserveAspectRatio="none"><path d="M0 13 Q150 0 300 13 T600 13 T900 13 T1200 13 V26 H0 Z"/></svg></div>
+    <div class="fcontent">
+      <div class="ftop">
+        <button class="fbtn" id="fmin" aria-label="Back to the app"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button class="fbtn" id="fplus" aria-label="Move start 5 minutes earlier">+5</button>
+      </div>
+      <div class="fmid">
+        <div id="fclock">0:00:00</div>
+        <div id="fmeta"></div>
+      </div>
+      <div id="fhint">Hold anywhere to stop</div>
+      <h2 id="fcat"></h2>
+    </div>
+  </div>
 
   <!-- ===== edit sheet ===== -->
   <div id="sheet" class="hidden">
@@ -272,6 +337,7 @@
     $('heading').textContent = v === 'settings' ? 'Settings' : 'G-Log';
     say(''); $('setMsg').textContent = '';
     if (v === 'history') loadHistory();
+    if (v === 'timer' && S) loadToday();
   }
   document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => show(b.dataset.view));
 
@@ -318,11 +384,18 @@
     $('sub').textContent = running ? (running.title || '') : '';
     $('hint').textContent = act === 'start' ? 'Hold to start'
       : act === 'switch' ? 'Hold to switch to ' + (selected || running.cat)
-      : act === 'stop' ? 'Hold to stop' : 'then hold here';
+      : act === 'stop' ? 'Hold to stop · tap to focus' : 'then hold here';
     if (running) {
-      const upd = () => { $('clock').textContent = fmt(Date.now() - running.start); $('later').disabled = Date.now() - running.start < 60000; };
+      const upd = () => { const t = fmt(Date.now() - running.start); $('clock').textContent = t; $('fclock').textContent = t; $('later').disabled = Date.now() - running.start < 60000; };
+      $('fcat').textContent = running.cat;
+      $('fmeta').textContent = (running.title ? running.title + '  ·  ' : '') + 'Started ' + fmtTime(running.start);
+      focusColor(running.color);
       upd(); tick = setInterval(upd, 1000);
-    } else $('clock').textContent = '0:00:00';
+    } else {
+      $('clock').textContent = '0:00:00';
+      if (!$('focus').classList.contains('hidden') && !fHold) closeFocus();
+    }
+    if (S) renderToday();
   }
 
   let holding = false, holdT0 = 0, raf = 0;
@@ -344,8 +417,12 @@
     holding = false; cancelAnimationFrame(raf); $('dial').classList.remove('holding');
     if (done === true) {
       if (navigator.vibrate) navigator.vibrate(18);
-      if (holdAction() === 'stop') stop(); else start(catByName(selected || running.cat));
-    } else renderTimer();
+      if (holdAction() === 'stop') stop(); else { start(catByName(selected || running.cat)); openFocus(); }
+    } else {
+      const tap = performance.now() - holdT0 < 220;
+      renderTimer();
+      if (tap && running) openFocus(650);
+    }
   }
   const dial = $('dial');
   dial.addEventListener('pointerdown', holdStart);
@@ -390,7 +467,7 @@
         const shift = running ? running.start - t0 : 0;   // +5 tapped before the server answered
         running = s;
         if (shift) { running.start += shift; syncStart(); }
-        renderTimer(); say('Logging to ' + S.calendar);
+        renderTimer(); say('Logging to ' + S.calendar); loadToday();
       })
       .catch(e => { if (my === seq) { running = prev; renderTimer(); } say("Couldn't start: " + e.message); });
   }
@@ -398,7 +475,7 @@
     if (startSync) syncStart();
     const prev = running, my = ++seq;
     running = null; renderTimer();
-    server('stop').then(() => say('Saved to ' + S.calendar))
+    server('stop').then(() => { say('Saved to ' + S.calendar); loadToday(); })
       .catch(e => { if (my === seq) { running = prev; renderTimer(); } say("Couldn't save: " + e.message); });
   }
   $('cancel').onclick = () => {
@@ -510,7 +587,7 @@
     const entry = { id: editing && editing.id, cat: sheetCat, title: $('sheetText').value.trim(), start, end };
     $('sheetSave').disabled = true; $('sheetSave').textContent = 'Saving…';
     server('saveEntry', [entry])
-      .then(() => { closeSheet(); say(entry.id ? 'Entry updated' : 'Entry added'); loadHistory(); })
+      .then(() => { closeSheet(); say(entry.id ? 'Entry updated' : 'Entry added'); if (view === 'history') loadHistory(); loadToday(); })
       .catch(e => { $('sheetErr').textContent = "Couldn't save: " + e.message; })
       .finally(() => { $('sheetSave').disabled = false; $('sheetSave').textContent = 'Save'; });
   };
@@ -518,9 +595,159 @@
     if (!delArmed) { delArmed = true; $('delEntry').textContent = 'Tap again to delete'; return; }
     const id = editing.id;
     hist = hist.filter(x => x.id !== id); renderHistory(); closeSheet();
-    server('deleteEntry', [id]).then(() => say('Entry deleted'))
+    today = today.filter(x => x.id !== id); renderToday();
+    server('deleteEntry', [id]).then(() => { say('Entry deleted'); loadToday(); })
       .catch(e => { say("Couldn't delete: " + e.message); loadHistory(); });
   };
+
+  // ---------- focus screen ----------
+  const F = $('focus');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let level = 1, lvRaf = 0, fHold = false, fT0 = 0, fRaf = 0, fullT = 0;
+  const STOP_MS = 900;
+  const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  function focusColor(c) { const h = hex(c); F.style.setProperty('--f', h); F.style.setProperty('--on-f', onColor(h)); }
+  function setLevel(v) { level = v; $('liquid').style.transform = `translateY(${(v * 100).toFixed(2)}%)`; }
+  function animateLevel(to, ms, done) {
+    cancelAnimationFrame(lvRaf);
+    const from = level, t0 = performance.now();
+    const step = now => {
+      const p = Math.min(1, (now - t0) / ms);
+      setLevel(from + (to - from) * ease(p));
+      if (p < 1) lvRaf = requestAnimationFrame(step); else if (done) done();
+    };
+    lvRaf = requestAnimationFrame(step);
+  }
+  function openFocus(ms) {
+    if (!running) return;
+    ms = ms || 1100;
+    focusColor(running.color); renderTimer();
+    clearTimeout(fullT);
+    F.style.setProperty('--fade', 1);
+    F.classList.remove('hidden', 'full');
+    if (reduced) { setLevel(0); F.classList.add('full'); return; }
+    setLevel(1);
+    animateLevel(0, ms);
+    fullT = setTimeout(() => F.classList.add('full'), ms * .5);
+  }
+  function closeFocus() {
+    cancelAnimationFrame(lvRaf); cancelAnimationFrame(fRaf); clearTimeout(fullT);
+    fHold = false; F.classList.add('hidden'); F.classList.remove('full', 'draining'); setLevel(1);
+  }
+  $('fmin').onclick = () => { F.classList.remove('full'); if (reduced) closeFocus(); else animateLevel(1, 550, closeFocus); };
+  $('fplus').onclick = () => nudge(NUDGE_MIN);
+  F.addEventListener('pointerdown', e => {
+    if (e.target.closest('.fbtn') || !running || !F.classList.contains('full')) return;
+    e.preventDefault();
+    fHold = true; fT0 = performance.now(); cancelAnimationFrame(lvRaf); F.classList.add('draining');
+    const step = now => {
+      if (!fHold) return;
+      const p = Math.min(1, (now - fT0) / STOP_MS);
+      setLevel(p); F.style.setProperty('--fade', Math.max(0, 1 - p * 1.8));
+      if (p >= 1) {
+        fHold = false;
+        if (navigator.vibrate) navigator.vibrate(18);
+        stop(); closeFocus();
+        return;
+      }
+      fRaf = requestAnimationFrame(step);
+    };
+    fRaf = requestAnimationFrame(step);
+  });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => F.addEventListener(ev, () => {
+    if (!fHold) return;
+    fHold = false; cancelAnimationFrame(fRaf); F.classList.remove('draining');
+    F.style.setProperty('--fade', 1);
+    animateLevel(0, 280);
+  }));
+  F.addEventListener('contextmenu', e => e.preventDefault());
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !F.classList.contains('hidden')) $('fmin').click(); });
+
+  // ---------- today timeline ----------
+  const SCALES = [20, 30, 44, 64, 96, 140, 200];   // pixels per hour
+  let today = [], scale = 44, peekId = null;
+  try { const v = Number(localStorage.getItem('glog-scale')); if (v >= 16 && v <= 260) scale = v; } catch (e) {}
+  function setScale(v) {
+    scale = Math.max(16, Math.min(260, v));
+    try { localStorage.setItem('glog-scale', String(Math.round(scale))); } catch (e) {}
+    renderToday();
+  }
+  $('zoomIn').onclick = () => setScale(SCALES.find(x => x > scale + 1) || 260);
+  $('zoomOut').onclick = () => setScale([...SCALES].reverse().find(x => x < scale - 1) || 16);
+
+  function loadToday() {
+    server('history', [dayStart(Date.now()), Date.now() + 60000])
+      .then(list => { today = list; renderToday(); })
+      .catch(() => {});
+  }
+
+  function renderToday() {
+    const tl = $('tl'), now = Date.now(), H = 3600e3, PAD = 14;
+    const items = today.slice();
+    if (running) items.push({ id: '__live', live: true, cat: running.cat, title: running.title, color: running.color, start: running.start, end: now });
+    const total = items.reduce((t, e) => t + (e.end - e.start), 0);
+    $('todayTotal').textContent = total ? fmtDur(total) : '';
+    const d0 = dayStart(now);
+    const first = items.length ? Math.min(...items.map(e => e.start)) : now;
+    const from = Math.max(d0, Math.floor(Math.min(first, now - 2 * H) / H) * H);
+    const to = Math.ceil((now + 1) / H) * H;
+    const y = ms => PAD + (ms - from) / H * scale;
+    tl.innerHTML = '';
+    tl.style.height = (y(to) + PAD) + 'px';
+    const add = (cls, css, html) => { const el = document.createElement('div'); el.className = cls; Object.assign(el.style, css); if (html) el.textContent = html; tl.appendChild(el); return el; };
+    add('axis', {});
+    const step = scale < 28 ? 3 : scale < 40 ? 2 : 1;
+    for (let t = from; t <= to; t += H) {
+      const hr = new Date(t).getHours();
+      if (hr % step) continue;
+      add('hr', { top: y(t) + 'px' }, new Date(t).toLocaleTimeString([], { hour: 'numeric' }));
+    }
+    add('now', { top: y(now) + 'px' });
+    let lastLabel = -1e9;
+    items.sort((a, b) => a.start - b.start).forEach(e => {
+      const top = y(e.start), h = Math.max(16, (e.end - e.start) / H * scale);
+      const b = document.createElement('button');
+      b.className = 'blob' + (e.live ? ' live' : ''); paint(b, e.color);
+      Object.assign(b.style, { top: top + 'px', height: h + 'px' });
+      b.setAttribute('aria-label', `${e.cat}, ${fmtTime(e.start)} to ${e.live ? 'now' : fmtTime(e.end)}`);
+      b.onclick = ev => { ev.stopPropagation(); peekId = peekId === e.id ? null : e.id; renderToday(); };
+      tl.appendChild(b);
+      const mid = top + h / 2;
+      if (mid - lastLabel >= 18) { add('blabel', { top: mid + 'px' }, e.cat); lastLabel = mid; }
+      if (peekId === e.id) {
+        const p = document.createElement('div'); p.id = 'peek';
+        p.style.top = Math.max(0, mid - 40) + 'px';
+        p.innerHTML = '<div class="p1"></div><div class="p2"></div>';
+        p.querySelector('.p1').textContent = e.cat;
+        if (e.title) { const em = document.createElement('em'); em.textContent = ' · ' + e.title; p.querySelector('.p1').appendChild(em); }
+        p.querySelector('.p2').textContent = `${fmtTime(e.start)} – ${e.live ? 'now' : fmtTime(e.end)}  ·  ${fmtDur(e.end - e.start)}`;
+        if (!e.live) {
+          const ed = document.createElement('button'); ed.textContent = 'Edit';
+          ed.onclick = ev => { ev.stopPropagation(); peekId = null; openSheet(e); renderToday(); };
+          p.appendChild(ed);
+        }
+        p.onclick = ev => ev.stopPropagation();
+        tl.appendChild(p);
+      }
+    });
+    if (!items.length) add('hr', { top: '0px', left: '84px', width: 'auto', textAlign: 'left', transform: 'none', fontSize: '14px' }, 'Nothing logged yet today.');
+  }
+  document.addEventListener('click', () => { if (peekId) { peekId = null; renderToday(); } });
+  setInterval(() => { if (running && view === 'timer') renderToday(); }, 30000);
+
+  // pinch to zoom
+  let pinch = null;
+  $('tl').addEventListener('touchstart', e => {
+    if (e.touches.length === 2) pinch = { d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY), s: scale };
+  }, { passive: true });
+  $('tl').addEventListener('touchmove', e => {
+    if (!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    setScale(pinch.s * d / pinch.d);
+  }, { passive: false });
+  $('tl').addEventListener('touchend', () => { pinch = null; });
+  $('tl').addEventListener('wheel', e => { if (e.ctrlKey) { e.preventDefault(); setScale(scale * (e.deltaY < 0 ? 1.1 : 0.9)); } }, { passive: false });
 
   // ---------- settings ----------
   function catRow(c) {
@@ -564,7 +791,7 @@
 
   // ---------- boot ----------
   server('getInit')
-    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; selected = running ? running.cat : null; renderCats(); renderTimer(); })
+    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; selected = running ? running.cat : null; renderCats(); renderTimer(); loadToday(); })
     .catch(e => { $('what').textContent = "Couldn't load"; $('sub').textContent = e.message; });
 </script>
 </body>
