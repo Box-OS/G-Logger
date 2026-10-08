@@ -45,23 +45,23 @@
   #tabs button.on { background:var(--ink); color:var(--paper); }
 
   /* ---------- timer: the big hold-to-start button ---------- */
-  #dial {
+  .dial {
     position:relative; display:block; margin:6px auto 0; width:min(80vw, 300px); aspect-ratio:1; border-radius:50%;
     background:#FFFFFF; color:#16181C; padding:0;
     box-shadow:0 24px 60px rgba(22,24,28,.10), 0 2px 8px rgba(22,24,28,.06);
     user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; touch-action:none;
     transition:transform .25s cubic-bezier(.2,.8,.2,1);
   }
-  #dial:active, #dial.holding { transform:scale(.965); }
-  #dial svg { position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg); pointer-events:none; }
-  #dial .track { stroke:rgba(22,24,28,.06); }
-  #dial .ring { stroke:var(--ring, #16181C); transition:stroke .3s ease; }
+  .dial:active, .dial.holding { transform:scale(.965); }
+  .dial svg { position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg); pointer-events:none; }
+  .dial .track { stroke:rgba(22,24,28,.06); }
+  .dial .ring { stroke:var(--ring, #16181C); transition:stroke .3s ease; }
   .face { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; pointer-events:none; }
-  #what { font-size:15px; font-weight:600; letter-spacing:-.01em; max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  #sub { font-size:13px; color:#6A707A; max-width:66%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-height:18px; margin-top:-4px; }
-  #clock { font-size:clamp(46px, 15vw, 60px); font-weight:600; line-height:1; letter-spacing:-.045em; font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
-  #dial.idle #clock { color:#C4C7CD; }
-  #hint { font-size:13px; font-weight:500; color:#6A707A; }
+  .dial .what { font-size:15px; font-weight:600; letter-spacing:-.01em; max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .dial .sub { font-size:13px; color:#6A707A; max-width:66%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-height:18px; margin-top:-4px; }
+  .dial .clock { font-size:clamp(46px, 15vw, 60px); font-weight:600; line-height:1; letter-spacing:-.045em; font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
+  .dial.idle .clock { color:#C4C7CD; }
+  .dial .hint { font-size:13px; font-weight:500; color:#6A707A; }
   #adjust { display:flex; align-items:center; justify-content:center; gap:10px; margin:18px auto 0; }
   #adjust button { height:38px; min-width:58px; padding:0 14px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:14px; font-weight:600; font-variant-numeric:tabular-nums; }
   #startedAt { min-width:132px; text-align:center; font-size:14px; color:var(--muted); font-variant-numeric:tabular-nums; }
@@ -167,12 +167,15 @@
   #focus.mini #fblob { display:grid; }
   #focus.sucking .fcontent { opacity:0 !important; transition:none; }
   #focus.sucking #liquid svg { display:none; }
-  #dial.pop { animation:dialpop .5s cubic-bezier(.3,1.6,.5,1); }
+  .dial.pop { animation:dialpop .5s cubic-bezier(.3,1.6,.5,1); }
   @keyframes dialpop { 0% { transform:scale(var(--s0, 1.12)); } 35% { transform:scale(.92); } 65% { transform:scale(1.04); } 100% { transform:scale(1); } }
   #focus.mini .fcontent { display:none; }
   #focus.mini #liquid svg { display:none; }
   body.minimized header { padding-left:70px; }
-  body.focusing #dial { z-index:21; box-shadow:0 30px 80px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.12); }
+  #fdial { position:absolute; margin:0; z-index:3; box-shadow:0 30px 80px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.12); }
+  #focus.mini #fdial { display:none; }
+  .fcontent { pointer-events:none; }
+  .fcontent button { pointer-events:auto; }
   #resume { display:flex; align-items:center; gap:10px; margin:16px auto 0; height:44px; padding:0 18px 0 16px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:14px; font-weight:600; }
   #resume .rdot { width:9px; height:9px; border-radius:50%; background:var(--cc); animation:blink 1.6s ease-in-out infinite; }
   @keyframes blink { 50% { opacity:.3; } }
@@ -207,6 +210,46 @@
   #peek button { margin-top:10px; height:34px; padding:0 14px; border-radius:999px; background:var(--ink); color:var(--paper); font-size:13px; font-weight:600; }
   .tl-empty { color:var(--muted); font-size:14px; margin:0 4px 10px; }
 
+  /* ---------- settings switch ---------- */
+  .setrow { display:flex; align-items:center; gap:14px; padding:14px 16px; margin-bottom:24px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
+  .setrow > div { flex:1; min-width:0; }
+  .setrow b { display:block; font-size:16px; font-weight:600; }
+  .setrow span { font-size:13px; color:var(--muted); }
+  .switch { position:relative; flex:none; width:52px; height:32px; border-radius:999px; background:color-mix(in srgb, var(--ink) 16%, transparent); transition:background-color .2s ease; }
+  .switch i { position:absolute; top:3px; left:3px; width:26px; height:26px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.25); transition:transform .22s cubic-bezier(.3,1.3,.5,1); }
+  .switch[aria-checked="true"] { background:#34C759; }
+  .switch[aria-checked="true"] i { transform:translateX(20px); }
+
+  /* ---------- sport mode ---------- */
+  :root[data-sport] { --disp:'Barlow Condensed', 'Geist', sans-serif; }
+  :root[data-sport] body { font-family:'Barlow', 'Geist', -apple-system, system-ui, sans-serif; }
+  :root[data-sport] h1 { font-family:var(--disp); font-style:italic; font-weight:800; font-size:30px; letter-spacing:.01em; text-transform:uppercase; }
+  :root[data-sport] .dial .clock { font-family:var(--disp); font-weight:700; font-size:clamp(66px, 21vw, 86px); letter-spacing:0; }
+  :root[data-sport] .dial .what { font-family:var(--disp); font-style:italic; font-weight:800; font-size:21px; letter-spacing:.02em; text-transform:uppercase; }
+  :root[data-sport] .dial .hint, :root[data-sport] #fhint, :root[data-sport] #fmeta { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+  :root[data-sport] .dial .ring, :root[data-sport] .dial .track { stroke-width:4.6; }
+  :root[data-sport] #fcat { font-family:var(--disp); font-style:italic; font-weight:800; font-size:clamp(80px, 25vw, 150px); line-height:.84; letter-spacing:0; text-transform:uppercase; }
+  :root[data-sport] .thead h2 #todayDate, :root[data-sport] .day h2, :root[data-sport] .card h3 { font-family:var(--disp); font-style:italic; font-weight:800; font-size:21px; letter-spacing:.02em; text-transform:uppercase; }
+  :root[data-sport] label, :root[data-sport] #tabbar button { font-family:var(--disp); font-weight:700; letter-spacing:.07em; text-transform:uppercase; }
+  :root[data-sport] label { font-size:14px; color:var(--muted); }
+  :root[data-sport] #tabbar button { font-size:12px; }
+  :root[data-sport] .entry .dur, :root[data-sport] #startedAt, :root[data-sport] #resume b, :root[data-sport] .thead h2 span { font-family:var(--disp); font-weight:700; font-size:18px; }
+  :root[data-sport] .field, :root[data-sport] .pillbtn, :root[data-sport] #resume, :root[data-sport] #adjust button, :root[data-sport] .chip, :root[data-sport] #save { border-radius:12px; }
+  :root[data-sport] .entry, :root[data-sport] .setrow, :root[data-sport] #peek { border-radius:14px; }
+  :root[data-sport] .pillbtn, :root[data-sport] #resume, :root[data-sport] #adjust button { font-family:var(--disp); font-weight:700; font-size:16px; letter-spacing:.05em; text-transform:uppercase; }
+  /* swipeable category picker: the centred card is the selected one */
+  :root[data-sport] #cats { position:relative; display:flex; gap:12px; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; overscroll-behavior-x:contain; scrollbar-width:none; margin:0 -16px; padding:8px calc(50% - 76px) 12px; }
+  :root[data-sport] #cats::-webkit-scrollbar { display:none; }
+  :root[data-sport] .cat {
+    flex:0 0 152px; height:152px; padding:14px; border:0; border-radius:20px; flex-direction:column; align-items:flex-start; justify-content:space-between; gap:0;
+    scroll-snap-align:center; background:color-mix(in srgb, var(--cc) 20%, var(--surface));
+    font-family:var(--disp); font-style:italic; font-weight:800; font-size:27px; line-height:.92; letter-spacing:.01em; text-transform:uppercase;
+    transform:scale(.88); opacity:.7; transition:transform .25s ease, opacity .25s ease, background-color .25s ease, color .25s ease;
+  }
+  :root[data-sport] .cat span:last-child { white-space:normal; overflow:visible; overflow-wrap:anywhere; }
+  :root[data-sport] .cat .dot { width:14px; height:14px; }
+  :root[data-sport] .cat.active { transform:scale(1); opacity:1; background:var(--cc); color:var(--on-cc); }
+
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
 </style>
 </head>
@@ -219,13 +262,13 @@
   <div id="pager">
   <!-- ===== timer ===== -->
   <section class="page" id="timer">
-    <button id="dial" class="idle" aria-live="polite">
+    <button id="dial" class="dial idle" aria-live="polite">
       <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="46" fill="none" stroke-width="2.4"/><circle class="ring" id="ring" cx="50" cy="50" r="46" fill="none" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
       <span class="face">
-        <span id="what">Loading…</span>
-        <span id="sub"></span>
-        <span id="clock">0:00:00</span>
-        <span id="hint"></span>
+        <span class="what" id="what">Loading…</span>
+        <span class="sub" id="sub"></span>
+        <span class="clock" id="clock">0:00:00</span>
+        <span class="hint" id="hint"></span>
       </span>
     </button>
     <div id="adjust" class="hidden">
@@ -237,21 +280,6 @@
     <button id="resume" class="hidden"></button>
     <input id="title" class="field" placeholder="What are you working on? (optional)" autocomplete="off">
     <div id="cats"></div>
-  <!-- ===== focus screen ===== -->
-    <div id="focus" class="hidden" aria-live="polite">
-      <div id="liquid"><svg viewBox="0 0 1200 26" preserveAspectRatio="none"><path d="M0 13 Q150 0 300 13 T600 13 T900 13 T1200 13 V26 H0 Z"/></svg></div>
-      <button id="fblob" aria-label="Back to focus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
-      <div class="fcontent">
-        <div class="ftop">
-          <button class="fbtn" id="fmin" aria-label="Minimise focus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
-          <button class="fbtn" id="fplus" aria-label="Move start 5 minutes earlier">+5</button>
-        </div>
-        <div class="fmid"></div>
-        <div id="fmeta"></div>
-        <div id="fhint">Hold the circle for 3 seconds to stop</div>
-        <h2 id="fcat"></h2>
-      </div>
-    </div>
   </section>
 
   <!-- ===== today timeline ===== -->
@@ -274,6 +302,10 @@
 
   <!-- ===== settings ===== -->
   <section class="page" id="settings">
+    <div class="setrow">
+      <div><b>Sport mode</b><span>Bold condensed type and a swipeable category picker</span></div>
+      <button id="sportToggle" class="switch" role="switch" aria-checked="false" aria-label="Sport mode"><i></i></button>
+    </div>
     <label for="calName">Log to calendar</label>
     <input id="calName" class="field" placeholder="Log">
     <p class="hint">Created if it doesn't exist. Type <b>primary</b> to use your main calendar.</p>
@@ -294,6 +326,31 @@
   </nav>
 
   <div id="msg" role="status"></div>
+
+  <!-- ===== focus screen ===== -->
+  <div id="focus" class="hidden" aria-live="polite">
+    <div id="liquid"><svg viewBox="0 0 1200 26" preserveAspectRatio="none"><path d="M0 13 Q150 0 300 13 T600 13 T900 13 T1200 13 V26 H0 Z"/></svg></div>
+    <button id="fblob" aria-label="Back to focus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg></button>
+    <div class="fcontent">
+      <div class="ftop">
+        <button class="fbtn" id="fmin" aria-label="Minimise focus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button class="fbtn" id="fplus" aria-label="Move start 5 minutes earlier">+5</button>
+      </div>
+      <div class="fmid"></div>
+      <div id="fmeta"></div>
+      <div id="fhint">Hold the circle for 3 seconds to stop</div>
+      <h2 id="fcat"></h2>
+    </div>
+    <button id="fdial" class="dial" aria-label="Hold for 3 seconds to stop">
+      <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="46" fill="none" stroke-width="2.4"/><circle class="ring" id="fring" cx="50" cy="50" r="46" fill="none" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="100 100"/></svg>
+      <span class="face">
+        <span class="what" id="fwhat"></span>
+        <span class="sub" id="fsub"></span>
+        <span class="clock" id="fclk">0:00:00</span>
+        <span class="hint">Hold 3s to stop</span>
+      </span>
+    </button>
+  </div>
 
   <!-- ===== edit sheet ===== -->
   <div id="sheet" class="hidden">
@@ -373,6 +430,48 @@
   };
   applyTheme();
 
+  // ---------- sport mode ----------
+  let sport = false;
+  try { sport = localStorage.getItem('glog-sport') === '1'; } catch (e) {}
+  function applySport() {
+    if (sport) {
+      document.documentElement.dataset.sport = '';
+      if (!$('sportFonts')) {
+        const l = document.createElement('link'); l.id = 'sportFonts'; l.rel = 'stylesheet';
+        l.href = 'https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700;1,800&family=Barlow:wght@400;500;600&display=swap';
+        document.head.appendChild(l);
+      }
+    } else delete document.documentElement.dataset.sport;
+    $('sportToggle').setAttribute('aria-checked', String(sport));
+    if (S) centerSelectedCat(false);
+  }
+  applySport();
+  $('sportToggle').onclick = () => {
+    sport = !sport;
+    try { localStorage.setItem('glog-sport', sport ? '1' : '0'); } catch (e) {}
+    applySport(); say(sport ? 'Sport mode on' : 'Sport mode off');
+  };
+  function centerSelectedCat(smooth) {
+    if (!sport) return;
+    const cats = $('cats'), b = [...cats.children].find(x => x.dataset.name === selected);
+    if (b) cats.scrollTo({ left: b.offsetLeft + b.offsetWidth / 2 - cats.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
+  }
+  // In sport mode the card that settles in the middle becomes the selection.
+  let catScrollT = 0;
+  $('cats').addEventListener('scroll', () => {
+    if (!sport) return;
+    clearTimeout(catScrollT);
+    catScrollT = setTimeout(() => {
+      const cats = $('cats'), mid = cats.scrollLeft + cats.clientWidth / 2;
+      let best = null, bestD = Infinity;
+      [...cats.children].forEach(b => { const d = Math.abs(b.offsetLeft + b.offsetWidth / 2 - mid); if (d < bestD) { bestD = d; best = b; } });
+      if (best && best.dataset.name !== selected) {
+        selected = best.dataset.name; renderTimer();
+        if (navigator.vibrate) navigator.vibrate(6);
+      }
+    }, 110);
+  }, { passive: true });
+
   // ---------- screens (swipe between them) ----------
   const PAGES = ['timer', 'timeline', 'history', 'settings'];
   const TITLES = { timer: 'Timer', timeline: 'Today', history: 'History', settings: 'Settings' };
@@ -421,7 +520,7 @@
       b.innerHTML = '<span class="dot"></span><span></span>';
       b.lastChild.textContent = c.name;
       b.dataset.name = c.name;
-      b.onclick = () => { selected = c.name; renderTimer(); };
+      b.onclick = () => { selected = c.name; renderTimer(); centerSelectedCat(true); };
       $('cats').appendChild(b);
     });
   }
@@ -431,7 +530,7 @@
     if ((selected && selected !== running.cat) || $('title').value.trim()) return 'switch';
     return 'stop';
   }
-  function setRing(p) { const r = $('ring'); r.setAttribute('stroke-dasharray', `${(p * 100).toFixed(2)} 100`); r.style.opacity = p > 0.005 ? 1 : 0; }
+  function setRing(p) { (overlayAnim ? ['ring'] : ['ring', 'fring']).forEach(id => { const r = $(id); r.setAttribute('stroke-dasharray', `${(p * 100).toFixed(2)} 100`); r.style.opacity = p > 0.005 ? 1 : 0; }); }
 
   function renderTimer() {
     clearInterval(tick);
@@ -440,6 +539,7 @@
     const dial = $('dial'), act = holdAction();
     const shown = running ? running : (selected ? { cat: selected, color: catByName(selected).color } : null);
     dial.style.setProperty('--ring', shown ? hex(shown.color) : '#16181C');
+    if (running) $('fdial').style.setProperty('--ring', hex(running.color));
     dial.classList.toggle('idle', !running);
     $('cancel').classList.toggle('hidden', !running);
     $('adjust').classList.toggle('hidden', !running);
@@ -450,6 +550,7 @@
     if (!holding) setRing(running ? 1 : 0);
     $('what').textContent = shown ? shown.cat : 'Pick a category';
     $('sub').textContent = running ? (running.title || '') : '';
+    if (running) { $('fwhat').textContent = running.cat; $('fsub').textContent = running.title || ''; }
     $('hint').textContent = act === 'start' ? 'Hold to start'
       : act === 'switch' ? 'Hold to switch to ' + (selected || running.cat)
       : act === 'stop' ? (focusOpen() ? 'Hold 3s to stop' : 'Hold to stop · tap to focus') : 'then hold here';
@@ -468,7 +569,7 @@
       upd(); resumeTick = setInterval(upd, 1000);
     }
     if (running) {
-      const upd = () => { $('clock').textContent = fmt(Date.now() - running.start); $('later').disabled = Date.now() - running.start < 60000; };
+      const upd = () => { $('clock').textContent = $('fclk').textContent = fmt(Date.now() - running.start); $('later').disabled = Date.now() - running.start < 60000; };
       $('fcat').textContent = running.cat;
       $('fmeta').textContent = (running.title ? running.title + '  ·  ' : '') + 'Started ' + fmtTime(running.start);
       focusColor(running.color);
@@ -485,23 +586,24 @@
   const focusOpen = () => focusVisible() && !$('focus').classList.contains('mini');
 
   // The circle shakes harder and grows while you hold; nothing else happens until 3 seconds.
+  const activeDial = () => focusOpen() ? $('fdial') : $('dial');
   function shakeDial(p, extra) {
-    const d = $('dial'), k = Math.pow(p, 1.4), amp = reduced ? 0 : 5 * k + (extra || 0);
-    dialScale = 1 + .12 * (1 - Math.pow(1 - p, 2)) + (extra ? extra / 60 : 0);
-    const dx = (Math.random() - .5) * 2 * amp, dy = (Math.random() - .5) * 2 * amp, rot = (Math.random() - .5) * 3 * k;
+    const d = activeDial(), k = Math.pow(p, 1.6), amp = reduced ? 0 : 1.6 * k + (extra || 0);
+    dialScale = 1 + .1 * (1 - Math.pow(1 - p, 2)) + (extra ? extra / 25 : 0);
+    const dx = (Math.random() - .5) * 2 * amp, dy = (Math.random() - .5) * 2 * amp, rot = (Math.random() - .5) * 1.2 * k;
     d.style.transition = 'none';
     d.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${dialScale.toFixed(3)})`;
   }
-  function popDial() {
-    const d = $('dial');
-    d.style.setProperty('--s0', dialScale.toFixed(3));
+  function popDial(d, keepS0) {
+    d = d || activeDial();
+    if (!keepS0) d.style.setProperty('--s0', dialScale.toFixed(3));
     d.style.transform = ''; d.style.transition = '';
     d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop');
     setTimeout(() => d.classList.remove('pop'), 520);
     dialScale = 1;
   }
   function settleDial() {
-    const d = $('dial');
+    const d = activeDial();
     d.style.transition = 'transform .3s cubic-bezier(.3,1.4,.5,1)'; d.style.transform = '';
     dialScale = 1;
   }
@@ -510,11 +612,9 @@
     if (e) e.preventDefault();
     const act = holdAction();
     if (holding || !act || overlayAnim) return;
-    holding = true; holdAct = act; holdT0 = performance.now(); $('dial').classList.add('holding');
-    const filling = act !== 'stop';
+    holding = true; holdAct = act; holdT0 = performance.now(); activeDial().classList.add('holding');
     const step = now => {
       const p = Math.min(1, (now - holdT0) / HOLD_MS);
-      setRing(filling ? p : 1 - p);
       shakeDial(p);
       if (p >= 1) { holdEnd(true); return; }
       raf = requestAnimationFrame(step);
@@ -524,21 +624,23 @@
 
   function holdEnd(done) {
     if (!holding) return;
-    holding = false; cancelAnimationFrame(raf); $('dial').classList.remove('holding');
+    holding = false; cancelAnimationFrame(raf); $('dial').classList.remove('holding'); $('fdial').classList.remove('holding');
     const act = holdAct;
     if (done === true) {
       if (navigator.vibrate) navigator.vibrate(act === 'stop' ? [12, 40, 30] : 22);
       if (act === 'stop') {
         const suck = focusOpen() && !reduced;
         overlayAnim = suck;
-        stop();
-        if (suck) vacuum(() => { overlayAnim = false; closeFocus(); popDial(); });
-        else { closeFocus(); popDial(); }
+        stop();   // the timer is stopped first; then the liquid gets vacuumed away
+        if (suck) vacuum(() => { overlayAnim = false; closeFocus(); popDial($('dial'), true); });
+        else { closeFocus(); popDial($('dial')); }
       } else {
         leaveMini();
+        const s0 = dialScale;
         start(catByName(selected || running.cat));
-        popDial();
+        settleDial();
         openFocus(1100);   // the liquid floods in once the hold is done
+        dialScale = s0; popDial($('fdial'));
       }
       return;
     }
@@ -549,32 +651,35 @@
 
   // High-pressure vacuum: the liquid is yanked into the circle, accelerating and jittering.
   function vacuum(done) {
-    const r = $('dial').getBoundingClientRect();
+    const r = $('fdial').getBoundingClientRect(), L = $('liquid');
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
     const R0 = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy)), MS = 560;
-    F.classList.add('sucking'); F.style.transition = 'none';
+    F.classList.add('sucking');
     setLevel(0);
     const t0 = performance.now();
     const step = now => {
       const p = Math.min(1, (now - t0) / MS);
       const e = Math.pow(p, 3.2);
       const jit = (1 - p) * (p > .04 ? 1 : 0);
-      const rad = Math.max(0, R0 * (1 - e) + (Math.random() - .5) * 46 * jit);
-      const jx = cx + (Math.random() - .5) * 12 * jit, jy = cy + (Math.random() - .5) * 12 * jit;
-      F.style.clipPath = `circle(${rad.toFixed(1)}px at ${jx.toFixed(1)}px ${jy.toFixed(1)}px)`;
-      shakeDial(1, 3 + 6 * e);   // keeps swelling and rattling while it swallows the liquid
+      const rad = Math.max(0, R0 * (1 - e) + (Math.random() - .5) * 14 * jit);
+      const jx = cx + (Math.random() - .5) * 3 * jit, jy = cy + (Math.random() - .5) * 3 * jit;
+      L.style.clipPath = `circle(${rad.toFixed(1)}px at ${jx.toFixed(1)}px ${jy.toFixed(1)}px)`;
+      shakeDial(1, .6 + 1.6 * e);   // swells a little more as it swallows the liquid
       if (p < 1) { requestAnimationFrame(step); return; }
-      F.classList.remove('sucking'); F.style.clipPath = ''; F.style.transition = '';
+      F.classList.remove('sucking'); L.style.clipPath = '';
+      $('dial').style.setProperty('--s0', dialScale.toFixed(3));
+      $('fdial').style.transform = ''; $('fdial').style.transition = '';
       done();
     };
     requestAnimationFrame(step);
   }
-  const dial = $('dial');
-  dial.addEventListener('pointerdown', holdStart);
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => dial.addEventListener(ev, () => holdEnd(false)));
-  dial.addEventListener('contextmenu', e => e.preventDefault());
-  dial.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) holdStart(e); });
-  dial.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') holdEnd(false); });
+  [$('dial'), $('fdial')].forEach(dial => {
+    dial.addEventListener('pointerdown', holdStart);
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => dial.addEventListener(ev, () => holdEnd(false)));
+    dial.addEventListener('contextmenu', e => e.preventDefault());
+    dial.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) holdStart(e); });
+    dial.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') holdEnd(false); });
+  });
   $('title').addEventListener('input', () => { if (running) renderTimer(); });
 
   // ----- forgot to start? move the start time -----
@@ -778,9 +883,16 @@
     };
     lvRaf = requestAnimationFrame(step);
   }
+  function placeFocusDial() {
+    show('timer', true); $('timer').scrollTop = 0;
+    const d = $('dial'), r = d.getBoundingClientRect(), w = d.offsetWidth;
+    Object.assign($('fdial').style, { width: w + 'px', height: w + 'px', left: (r.left + r.width / 2 - w / 2) + 'px', top: (r.top + r.height / 2 - w / 2) + 'px' });
+  }
+  window.addEventListener('resize', () => { if (focusVisible()) placeFocusDial(); });
   function openFocus(ms) {
     if (!running) return;
     if (F.classList.contains('mini')) { releaseFromBlob(); return; }
+    placeFocusDial();
     ms = ms || 1100;
     focusColor(running.color); renderTimer();
     clearTimeout(fullT);
@@ -827,7 +939,7 @@
     F.classList.remove('mini');
     document.body.classList.remove('minimized');
     document.body.classList.add('focusing');
-    show('timer', true); $('timer').scrollTop = 0;
+    placeFocusDial();
     renderTimer();
     setClip(bigR(), true);
     clipT = setTimeout(() => { F.classList.add('full'); }, reduced ? 0 : 300);
@@ -968,14 +1080,14 @@
     const cats = [...$('catRows').children].map(r => ({ name: r.querySelector('input').value, color: r.dataset.color }));
     $('save').disabled = true; $('save').textContent = 'Saving…';
     server('saveSettings', [{ calendar: $('calName').value, cats }])
-      .then(init => { S = init.settings; hist = []; renderCats(); renderTimer(); fillSettings(); say('Settings saved'); })
+      .then(init => { S = init.settings; hist = []; renderCats(); renderTimer(); fillSettings(); centerSelectedCat(false); say('Settings saved'); })
       .catch(e => { $('setMsg').textContent = "Couldn't save settings: " + e.message; })
       .finally(() => { $('save').disabled = false; $('save').textContent = 'Save settings'; });
   };
 
   // ---------- boot ----------
   server('getInit')
-    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; lastStopped = init.lastStopped || null; selected = running ? running.cat : null; renderCats(); renderTimer(); loadToday(); fillSettings(); })
+    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; lastStopped = init.lastStopped || null; selected = running ? running.cat : null; renderCats(); renderTimer(); loadToday(); fillSettings(); applySport(); })
     .catch(e => { $('what').textContent = "Couldn't load"; $('sub').textContent = e.message; });
 </script>
 </body>
