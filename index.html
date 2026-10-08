@@ -956,12 +956,21 @@
       return { x: dx1 / r1 - dx2 / r2, y: dy / r1 - dy / r2 };
     };
     const parts = [];
-    for (let i = 0; i < 4200 && parts.length < 1500; i++) {   // denser near the circle, sparser far away
+    const mk = (x, y) => ({ x, y, w: .8 + Math.random() * 1.2, len: 4 + Math.random() * 5, a: .6 + Math.random() * .35, alive: true });
+    for (let i = 0; i < 5200 && parts.length < 1800; i++) {   // denser near the circle, plenty far away too
       const x = Math.random() * W, y = Math.random() * H, d = Math.hypot(x - cx, y - cy);
       if (d < rad * 1.03) continue;
-      if (Math.random() > .14 + Math.pow(rad * 1.5 / d, 1.5)) continue;
-      parts.push({ x, y, w: .8 + Math.random() * 1.2, len: 4 + Math.random() * 5, a: .6 + Math.random() * .35, alive: true });
+      if (Math.random() > .32 + Math.pow(rad * 1.5 / d, 1.5)) continue;
+      parts.push(mk(x, y));
     }
+    const spawnEdge = n => {                             // new filings appear at the screen edges
+      for (let i = 0; i < n; i++) {
+        const side = Math.random() * (2 * W + 2 * H);
+        const x = side < W ? side : side < W + H ? W + 4 : side < 2 * W + H ? side - W - H : -4;
+        const y = side < W ? -4 : side < W + H ? side - W : side < 2 * W + H ? H + 4 : side - 2 * W - H;
+        parts.push(mk(x, y));
+      }
+    };
     // The liquid's edge recedes toward the circle; whatever it uncovers is already filings.
     // No fading anywhere: the edge itself is the transition.
     const setEdge = r => {
@@ -969,6 +978,7 @@
       L.style.clipPath = c; FC.style.clipPath = c;
     };
     cv.style.display = 'block'; ctx.strokeStyle = color; ctx.lineCap = 'round';
+    const PULL_MS = 1100;
     const st = { phase: 'hold', p: 0, edge: R, t0: 0, from: R, done: null };
     let last = performance.now();
     const frame = now => {
@@ -979,9 +989,10 @@
         st.edge = R - (R - rad * 1.08) * e;
         pull = .07 * st.p * st.p;                      // uncovered filings start drifting along the field
       } else if (st.phase === 'pull') {
-        const t = Math.min(1, (now - st.t0) / 700);
+        const t = Math.min(1, (now - st.t0) / PULL_MS);
         st.edge = Math.max(rad * .98, st.from - (st.from - rad * .98) * Math.min(1, (now - st.t0) / 160));
-        pull = .07 + 3.2 * t * t;                      // then a strong, growing pull
+        pull = .07 + 2.6 * t * t;                      // then a strong, growing pull
+        if (t < .72) spawnEdge(Math.round(9 * (1 - t)));   // keep the stream coming from the edges
       } else {                                         // cancelled: the liquid flows back out over the filings
         const t = Math.min(1, (now - st.t0) / 320), e = 1 - Math.pow(1 - t, 3);
         st.edge = st.from + (R - st.from) * e;
@@ -997,7 +1008,7 @@
         const sgn = q.x >= cx ? -1 : 1;                // follow the field line toward the nearest pole
         const ux = sgn * E.x / n, uy = sgn * E.y / n;
         const d = Math.hypot(q.x - cx, q.y - cy);
-        const v = pull * (d * 3.2 + 260 * Math.min(1, rad * rad / (d * d)));
+        const v = pull * (120 + d * 1.6 + 260 * Math.min(1, rad * rad / (d * d)));   // far filings lag behind
         q.x += ux * v * dt; q.y += uy * v * dt;
         const d2 = Math.hypot(q.x - cx, q.y - cy);
         if (d2 < rad * .98) { q.alive = false; continue; }
@@ -1007,8 +1018,8 @@
         ctx.globalAlpha = q.a; ctx.lineWidth = q.w;
         ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(q.x - ux * len, q.y - uy * len); ctx.stroke();
       }
-      if (st.phase === 'pull') shakeDial(1, .2 + .45 * Math.min(1, (now - st.t0) / 700));
-      const over = st.phase === 'pull' ? (!left || now - st.t0 > 820) : st.phase === 'cancel' ? now - st.t0 > 330 : false;
+      if (st.phase === 'pull') shakeDial(1, .2 + .45 * Math.min(1, (now - st.t0) / PULL_MS));
+      const over = st.phase === 'pull' ? (!left || now - st.t0 > PULL_MS + 250) : st.phase === 'cancel' ? now - st.t0 > 330 : false;
       if (!over) { requestAnimationFrame(frame); return; }
       ctx.clearRect(0, 0, W, H); cv.style.display = 'none';
       L.style.clipPath = ''; FC.style.clipPath = '';
