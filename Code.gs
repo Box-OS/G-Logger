@@ -43,7 +43,7 @@ function saveSettings(s) {
   const calendar = String(s.calendar || '').trim() || DEFAULTS.calendar;
   const seen = new Set();
   const cats = (s.cats || [])
-    .map(c => ({ name: String(c.name || '').trim(), color: COLORS[c.color] ? c.color : 'GRAY' }))
+    .map(c => ({ name: String(c.name || '').trim(), color: COLORS[c.color] ? c.color : 'GRAY', icon: String(c.icon || '').replace(/[^a-z]/g, '').slice(0, 16) }))
     .filter(c => c.name && !seen.has(c.name.toLowerCase()) && seen.add(c.name.toLowerCase()));
   if (!cats.length) throw new Error('Add at least one category.');
   getCalendar_(calendar); // creates the calendar now if it doesn't exist

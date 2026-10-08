@@ -211,6 +211,39 @@
   #peek button { margin-top:10px; height:34px; padding:0 14px; border-radius:999px; background:var(--ink); color:var(--paper); font-size:13px; font-weight:600; }
   .tl-empty { color:var(--muted); font-size:14px; margin:0 4px 10px; }
 
+  /* ---------- category picker: floating glass pill with a sliding highlight ---------- */
+  .ico { display:grid; place-items:center; flex:none; }
+  .ico svg { width:26px; height:26px; display:block; }
+  :root:not([data-sport]) #cats {
+    position:relative; display:flex; gap:0; padding:6px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; overscroll-behavior-x:contain;
+    border-radius:999px; background:color-mix(in srgb, var(--surface) 70%, transparent);
+    -webkit-backdrop-filter:blur(20px) saturate(1.6); backdrop-filter:blur(20px) saturate(1.6);
+    border:1px solid var(--line); box-shadow:0 12px 34px rgba(10,11,13,.08), inset 0 1px 0 rgba(255,255,255,.45);
+  }
+  :root:not([data-sport]) #cats::-webkit-scrollbar { display:none; }
+  :root:not([data-sport]) .cat {
+    position:relative; z-index:1; flex:1 0 23%; min-width:74px; height:66px; padding:0 6px; gap:3px;
+    flex-direction:column; align-items:center; justify-content:center; border:0; border-radius:999px; background:transparent;
+    font-size:12.5px; font-weight:600; color:var(--ink); transition:color .25s ease, transform .15s ease;
+  }
+  :root:not([data-sport]) .cat .lbl { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  :root:not([data-sport]) .cat.active { background:transparent; color:color-mix(in srgb, var(--cc) 78%, var(--ink)); }
+  #catHL {
+    position:absolute; z-index:0; top:6px; left:0; height:66px; width:0; border-radius:999px; pointer-events:none; opacity:0;
+    background:color-mix(in srgb, var(--cc, #888) 17%, transparent);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 1px 2px rgba(10,11,13,.06);
+    transition:transform .5s cubic-bezier(.3,1.35,.45,1), width .5s cubic-bezier(.3,1.35,.45,1), background-color .3s ease, opacity .2s ease;
+  }
+  #catHL.show { opacity:1; }
+  :root[data-sport] #catHL { display:none; }
+  /* icon picker in settings */
+  .iconbtn { width:50px; height:50px; flex:none; border-radius:50%; background:var(--surface); border:1px solid var(--line); display:grid; place-items:center; color:var(--ink); }
+  .iconbtn svg { width:22px; height:22px; }
+  .ipal { display:flex; flex-wrap:wrap; gap:6px; padding:10px 6px 6px; }
+  .ipal button { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; color:var(--muted); background:var(--surface); border:1px solid var(--line); }
+  .ipal button svg { width:20px; height:20px; }
+  .ipal button.on { color:var(--paper); background:var(--ink); border-color:transparent; }
+
   /* ---------- settings switch ---------- */
   .setrow { display:flex; align-items:center; gap:14px; padding:14px 16px; margin-bottom:24px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
   .setrow > div { flex:1; min-width:0; }
@@ -247,8 +280,10 @@
     font-family:var(--disp); font-style:italic; font-weight:800; font-size:27px; line-height:.92; letter-spacing:.01em; text-transform:uppercase;
     transform:scale(.88); opacity:.7; transition:transform .25s ease, opacity .25s ease, background-color .25s ease, color .25s ease;
   }
-  :root[data-sport] .cat span:last-child { white-space:normal; overflow:visible; overflow-wrap:anywhere; }
-  :root[data-sport] .cat .dot { width:14px; height:14px; }
+  :root[data-sport] .cat .lbl { white-space:normal; overflow:visible; overflow-wrap:anywhere; }
+  :root[data-sport] .cat .ico svg { width:30px; height:30px; }
+  :root[data-sport] .cat .ico { color:var(--cc); }
+  :root[data-sport] .cat.active .ico { color:var(--on-cc); }
   :root[data-sport] .cat.active { transform:scale(1); opacity:1; background:var(--cc); color:var(--on-cc); }
 
   @media (prefers-reduced-motion: reduce) { * { transition:none !important; animation:none !important; } }
@@ -432,6 +467,34 @@
   };
   applyTheme();
 
+  // ---------- category icons ----------
+  const ICONS = {
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
+    book: '<path d="M4 19V5a2 2 0 0 1 2-2h14v15H6a2 2 0 0 0-2 2v-1z"/><path d="M6 21h14"/>',
+    code: '<path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/>',
+    dumbbell: '<path d="M6.5 7v10M3.5 9.5v5M17.5 7v10M20.5 9.5v5M6.5 12h11"/>',
+    run: '<circle cx="15" cy="4.5" r="2"/><path d="M8 21l3-6 3 2.5V21M5.5 11.5l3.5-3 4 1 2.5 3 3 1M10.8 14.8l-3.6 1"/>',
+    briefcase: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 13h18"/>',
+    game: '<rect x="2.5" y="7" width="19" height="11" rx="5.5"/><path d="M7.5 10.5v4M5.5 12.5h4"/><circle cx="15.5" cy="11.5" r=".9" fill="currentColor"/><circle cx="17.8" cy="13.8" r=".9" fill="currentColor"/>',
+    music: '<path d="M9 18V5l11-2v13"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/>',
+    coffee: '<path d="M4 9h13v4.5A5.5 5.5 0 0 1 11.5 19h-2A5.5 5.5 0 0 1 4 13.5zM17 10.5h1.5a2.5 2.5 0 0 1 0 5H17M8.5 3v3M12.5 3v3"/>',
+    bed: '<path d="M3 19V6M3 14h18v5M21 14a3 3 0 0 0-3-3h-7v3"/><circle cx="7" cy="11" r="1.6"/>',
+    people: '<circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9" r="2.3"/><path d="M16 14.2a4.5 4.5 0 0 1 5 4.8"/>',
+    pen: '<path d="M4 20l4.2-1L19.5 7.7a2 2 0 0 0 0-2.8l-.4-.4a2 2 0 0 0-2.8 0L5 15.8zM14.5 6.5l3 3"/>',
+    cart: '<circle cx="9.5" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/><path d="M3 4h2.2l2.4 11h11L21 8H6.3"/>',
+    phone: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/>',
+    home: '<path d="M3.5 11L12 4l8.5 7v8.5a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/>',
+    heart: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/>',
+    star: '<path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8z"/>',
+  };
+  const ICON_GUESS = [[/deep|focus|study|revis/i, 'target'], [/class|school|lecture|uni|course|read|book/i, 'book'], [/app|code|dev|program|build|project/i, 'code'],
+    [/gym|lift|workout|weights|train/i, 'dumbbell'], [/run|cardio|sport|walk|bike/i, 'run'], [/admin|work|job|email|meeting/i, 'briefcase'],
+    [/leisure|game|play|fun|tv|break/i, 'game'], [/music|guitar|piano|produc/i, 'music'], [/eat|meal|food|coffee|lunch|dinner/i, 'coffee'],
+    [/sleep|nap|rest|bed/i, 'bed'], [/social|friend|family|date/i, 'people'], [/write|journal|essay|note/i, 'pen'],
+    [/shop|errand|grocer/i, 'cart'], [/phone|call|scroll/i, 'phone'], [/home|chore|clean|cook/i, 'home'], [/health|doctor|self/i, 'heart']];
+  const iconOf = c => (c.icon && ICONS[c.icon]) ? c.icon : ((ICON_GUESS.find(([re]) => re.test(c.name)) || [0, 'star'])[1]);
+  const svgIcon = k => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[k] || ICONS.star}</svg>`;
+
   // ---------- sport mode ----------
   let sport = false;
   try { sport = localStorage.getItem('glog-sport') === '1'; } catch (e) {}
@@ -445,7 +508,7 @@
       }
     } else delete document.documentElement.dataset.sport;
     $('sportToggle').setAttribute('aria-checked', String(sport));
-    if (S) centerSelectedCat(false);
+    if (S) { centerSelectedCat(false); requestAnimationFrame(placeCatHighlight); }
   }
   applySport();
   $('sportToggle').onclick = () => {
@@ -453,9 +516,19 @@
     try { localStorage.setItem('glog-sport', sport ? '1' : '0'); } catch (e) {}
     applySport(); say(sport ? 'Sport mode on' : 'Sport mode off');
   };
-  function centerSelectedCat(smooth) {
-    if (!sport) return;
-    const cats = $('cats'), b = [...cats.children].find(x => x.dataset.name === selected);
+  function placeCatHighlight() {
+    const hl = $('catHL'); if (!hl) return;
+    const b = [...$('cats').querySelectorAll('.cat')].find(x => x.dataset.name === selected);
+    if (!b) { hl.classList.remove('show'); return; }
+    hl.style.setProperty('--cc', hex(catByName(selected).color));
+    hl.style.width = b.offsetWidth + 'px';
+    hl.style.transform = `translateX(${b.offsetLeft}px)`;
+    hl.classList.add('show');
+  }
+  window.addEventListener('resize', () => { if (S) placeCatHighlight(); });
+  function centerSelectedCat(smooth, always) {
+    if (!sport && !always) return;
+    const cats = $('cats'), b = [...cats.querySelectorAll('.cat')].find(x => x.dataset.name === selected);
     if (b) cats.scrollTo({ left: b.offsetLeft + b.offsetWidth / 2 - cats.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
   }
   // In sport mode the card that settles in the middle becomes the selection.
@@ -466,7 +539,7 @@
     catScrollT = setTimeout(() => {
       const cats = $('cats'), mid = cats.scrollLeft + cats.clientWidth / 2;
       let best = null, bestD = Infinity;
-      [...cats.children].forEach(b => { const d = Math.abs(b.offsetLeft + b.offsetWidth / 2 - mid); if (d < bestD) { bestD = d; best = b; } });
+      [...cats.querySelectorAll('.cat')].forEach(b => { const d = Math.abs(b.offsetLeft + b.offsetWidth / 2 - mid); if (d < bestD) { bestD = d; best = b; } });
       if (best && best.dataset.name !== selected) {
         selected = best.dataset.name; renderTimer();
         if (navigator.vibrate) navigator.vibrate(6);
@@ -515,14 +588,14 @@
   let lastStopped = null, overlayAnim = false, resumeTick = 0;
 
   function renderCats() {
-    $('cats').innerHTML = '';
+    $('cats').innerHTML = '<div id="catHL"></div>';
     S.cats.forEach(c => {
       const b = document.createElement('button');
       b.className = 'cat'; paint(b, c.color);
-      b.innerHTML = '<span class="dot"></span><span></span>';
+      b.innerHTML = `<span class="ico">${svgIcon(iconOf(c))}</span><span class="lbl"></span>`;
       b.lastChild.textContent = c.name;
       b.dataset.name = c.name;
-      b.onclick = () => { selected = c.name; renderTimer(); centerSelectedCat(true); };
+      b.onclick = () => { selected = c.name; renderTimer(); centerSelectedCat(true, true); };
       $('cats').appendChild(b);
     });
   }
@@ -538,6 +611,7 @@
     clearInterval(tick);
     if (selected && !catByName(selected)) selected = null;
     document.querySelectorAll('.cat').forEach(b => b.classList.toggle('active', b.dataset.name === selected));
+    placeCatHighlight();
     const dial = $('dial'), act = holdAction();
     const shown = running ? running : (selected ? { cat: selected, color: catByName(selected).color } : null);
     dial.style.setProperty('--ring', shown ? hex(shown.color) : '#16181C');
@@ -615,14 +689,13 @@
     const act = holdAction();
     if (holding || !act || overlayAnim) return;
     holding = true; holdAct = act; holdT0 = performance.now(); activeDial().classList.add('holding');
-    suckGeo = act === 'stop' && focusOpen() && !reduced ? suckGeometry() : null;
-    if (suckGeo) F.classList.add('sucking');
+    mag = act === 'stop' && focusOpen() && !reduced ? startMagnet() : null;
     const step = now => {
       const p = Math.min(1, (now - holdT0) / HOLD_MS);
       if (act !== 'stop') setRing(p);   // the ring fills while you hold to start
       else {
         setRing(1 - p);                 // ...and empties while you hold to stop
-        if (suckGeo) suckTo(suckGeo.R * (1 - .16 * Math.pow(p, 2.2)));   // only a gentle pull until the ring is empty
+        if (mag) mag.hold(p);           // the liquid slowly turns into filings that start drifting in
       }
       shakeDial(p);
       if (p >= 1) { holdEnd(true); return; }
@@ -641,9 +714,9 @@
         const suck = focusOpen() && !reduced;
         overlayAnim = suck;
         stop();   // the timer is stopped first; then the liquid gets vacuumed away
-        if (suck) vacuum(() => { overlayAnim = false; closeFocus(); popDial($('dial'), true); }, suckGeo);
-        else { closeFocus(); popDial($('dial')); }
-        suckGeo = null;
+        if (suck && mag) mag.finish(() => { overlayAnim = false; closeFocus(); popDial($('dial'), true); });
+        else { if (mag) mag.cancel(); closeFocus(); popDial($('dial')); }
+        mag = null;
       } else {
         leaveMini();
         const s0 = dialScale;
@@ -654,93 +727,89 @@
       }
       return;
     }
-    if (act === 'stop' && suckGeo) {
-      const g = suckGeo, from = suckGeo.cur || g.R, t0 = performance.now();
-      suckGeo = null;
-      const back = now => {
-        const p = Math.min(1, (now - t0) / 260);
-        suckTo(from + (g.R - from) * (1 - Math.pow(1 - p, 3)), g);
-        if (p < 1) requestAnimationFrame(back); else { $('liquid').style.clipPath = ''; F.classList.remove('sucking'); }
-      };
-      requestAnimationFrame(back);
-    }
+    if (mag) { mag.cancel(); mag = null; }   // let go early: filings fade, the liquid comes back
     const tap = performance.now() - holdT0 < 220;
     settleDial(); renderTimer();
     if (tap && running && !focusOpen()) openFocus(650);
   }
 
-  // High-pressure vacuum: the liquid is yanked into the circle, accelerating and jittering.
-  // Liquid suction is a clip circle centred on the focus dial.
-  let suckGeo = null;
-  function suckGeometry() {
-    const r = $('fdial').getBoundingClientRect();
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    return { cx, cy, R: Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy)) };
-  }
-  function suckTo(rad, g, jx, jy) {
-    g = g || suckGeo; if (!g) return;
-    g.cur = rad;
-    $('liquid').style.clipPath = `circle(${Math.max(0, rad).toFixed(1)}px at ${(jx || g.cx).toFixed(1)}px ${(jy || g.cy).toFixed(1)}px)`;
-  }
-  // Once the ring is empty the liquid breaks into iron filings. They line up along a bar
-  // magnet's field (poles inside the circle) and get pulled in along those curved lines,
-  // slowly at first, then faster and faster.
-  function vacuum(done, g) {
-    g = g || suckGeometry();
+  // Magnetic stop. While you hold, the liquid gradually dissolves into iron filings that line up
+  // along a bar magnet's field (poles inside the circle) and begin drifting in. When the ring is
+  // empty the pull keeps growing until every filing has been drawn into the circle.
+  let mag = null;
+  function startMagnet() {
     const L = $('liquid'), cv = $('filings'), ctx = cv.getContext('2d');
     const W = innerWidth, H = innerHeight, dpr = Math.min(2, devicePixelRatio || 1);
     cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const fd = $('fdial').getBoundingClientRect(), cx = fd.left + fd.width / 2, cy = fd.top + fd.height / 2, rad = fd.width / 2;
-    const color = hex(running ? running.color : (lastStopped ? lastStopped.color : 'GRAY'));
-    const reach = g.cur || g.R, A = rad * .55;          // pole offset from the centre
+    const color = hex(running ? running.color : 'GRAY'), A = rad * .55;
     const field = (x, y) => {                          // + pole on the right, − pole on the left
       const dx1 = x - (cx + A), dy = y - cy, dx2 = x - (cx - A);
       const r1 = Math.pow(dx1 * dx1 + dy * dy, 1.5) || 1, r2 = Math.pow(dx2 * dx2 + dy * dy, 1.5) || 1;
       return { x: dx1 / r1 - dx2 / r2, y: dy / r1 - dy / r2 };
     };
     const parts = [];
-    for (let i = 0; i < 4200 && parts.length < 1500; i++) {   // denser near the circle, sparse far away
+    for (let i = 0; i < 4200 && parts.length < 1500; i++) {   // denser near the circle, sparser far away
       const x = Math.random() * W, y = Math.random() * H, d = Math.hypot(x - cx, y - cy);
-      if (d < rad * 1.03 || d > reach) continue;
-      if (Math.random() > .12 + Math.pow(rad * 1.5 / d, 1.6)) continue;
-      parts.push({ x, y, w: .8 + Math.random() * 1.2, len: 4 + Math.random() * 5, a: .55 + Math.random() * .4, alive: true });
+      if (d < rad * 1.03) continue;
+      if (Math.random() > .14 + Math.pow(rad * 1.5 / d, 1.5)) continue;
+      parts.push({ x, y, x0: x, y0: y, w: .8 + Math.random() * 1.2, len: 4 + Math.random() * 5, a: .55 + Math.random() * .4, alive: true });
     }
-    const T = 780;
-    F.classList.add('sucking'); setLevel(0);
-    L.style.clipPath = ''; L.style.transition = 'opacity .14s ease'; L.style.opacity = '0';
-    cv.style.display = 'block';
-    ctx.strokeStyle = color; ctx.lineCap = 'round';
-    const t0 = performance.now(); let last = t0;
-    const step = now => {
-      const t = now - t0, dt = Math.min(32, now - last) / 1000; last = now;
-      const ramp = 3.2 * Math.pow(Math.min(1, t / T), 2);   // pull strength grows: the vacuum
+    cv.style.display = 'block'; ctx.strokeStyle = color; ctx.lineCap = 'round';
+    const st = { phase: 'hold', p: 0, fade: 1, t0: 0, done: null };
+    let last = performance.now(), raf2 = 0;
+    const frame = now => {
+      const dt = Math.min(32, now - last) / 1000; last = now;
+      let pull, show, liquid;
+      if (st.phase === 'hold') {
+        pull = .12 * st.p * st.p;                      // a gentle drift while you hold
+        show = Math.min(1, st.p * 1.4);                // filings appear as the liquid thins out
+        liquid = 1 - Math.pow(st.p, 1.2);
+      } else if (st.phase === 'pull') {
+        const t = Math.min(1, (now - st.t0) / 700);
+        pull = .12 + 3.2 * t * t;                      // then a strong, growing pull
+        show = 1; liquid = 0;
+      } else {                                         // cancelled
+        st.fade = Math.max(0, st.fade - dt / .28);
+        pull = 0; show = st.fade; liquid = 1 - st.fade * (1 - st.liq);
+      }
+      if (st.phase !== 'cancel') st.liq = liquid;
+      L.style.opacity = liquid.toFixed(3);
+      F.style.setProperty('--fade', Math.max(0, 1 - show * 1.2).toFixed(3));
       ctx.clearRect(0, 0, W, H);
       let left = 0;
       for (const q of parts) {
         if (!q.alive) continue;
         const E = field(q.x, q.y), n = Math.hypot(E.x, E.y) || 1;
-        const sgn = q.x >= cx ? -1 : 1;                   // follow the line toward the nearest pole
+        const sgn = q.x >= cx ? -1 : 1;                // follow the field line toward the nearest pole
         const ux = sgn * E.x / n, uy = sgn * E.y / n;
         const d = Math.hypot(q.x - cx, q.y - cy);
-        const v = ramp * (d * 3.2 + 260 * Math.min(1, rad * rad / (d * d)));
+        const v = pull * (d * 3.2 + 260 * Math.min(1, rad * rad / (d * d)));
         q.x += ux * v * dt; q.y += uy * v * dt;
         if (Math.hypot(q.x - cx, q.y - cy) < rad * .98) { q.alive = false; continue; }
         left++;
         const len = q.len + Math.min(30, v * .025);
-        ctx.globalAlpha = t > T ? q.a * Math.max(0, 1 - (t - T) / 120) : q.a;
+        ctx.globalAlpha = q.a * show;
         ctx.lineWidth = q.w;
         ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(q.x - ux * len, q.y - uy * len); ctx.stroke();
       }
-      shakeDial(1, .2 + .45 * Math.min(1, t / T));   // the circle swells a little as it pulls everything in
-      if (left && t < T + 120) { requestAnimationFrame(step); return; }
+      if (st.phase === 'pull') shakeDial(1, .2 + .45 * Math.min(1, (now - st.t0) / 700));
+      const over = st.phase === 'pull' ? (!left || now - st.t0 > 820) : st.phase === 'cancel' ? st.fade <= 0 : false;
+      if (!over) { raf2 = requestAnimationFrame(frame); return; }
       ctx.clearRect(0, 0, W, H); cv.style.display = 'none';
-      L.style.transition = ''; L.style.opacity = '';
-      F.classList.remove('sucking');
-      $('dial').style.setProperty('--s0', dialScale.toFixed(3));
-      $('fdial').style.transform = ''; $('fdial').style.transition = '';
-      done();
+      L.style.opacity = ''; F.style.setProperty('--fade', 1);
+      if (st.phase === 'pull') {
+        $('dial').style.setProperty('--s0', dialScale.toFixed(3));
+        $('fdial').style.transform = ''; $('fdial').style.transition = '';
+        st.done && st.done();
+      }
     };
-    requestAnimationFrame(step);
+    raf2 = requestAnimationFrame(frame);
+    return {
+      hold(p) { st.p = p; },
+      finish(done) { st.phase = 'pull'; st.t0 = performance.now(); st.done = done; },
+      cancel() { if (st.phase === 'hold') { st.phase = 'cancel'; st.fade = 1; } },
+    };
   }
   [$('dial'), $('fdial')].forEach(dial => {
     dial.addEventListener('pointerdown', holdStart);
@@ -1114,7 +1183,16 @@
 
   // ---------- settings ----------
   function catRow(c) {
-    const wrap = document.createElement('div'); wrap.className = 'crow'; wrap.dataset.color = c.color;
+    const wrap = document.createElement('div'); wrap.className = 'crow'; wrap.dataset.color = c.color; wrap.dataset.icon = iconOf(c);
+    const ib = document.createElement('button'); ib.className = 'iconbtn'; ib.setAttribute('aria-label', 'Choose icon');
+    const ipal = document.createElement('div'); ipal.className = 'ipal hidden';
+    const syncIcon = () => { ib.innerHTML = svgIcon(wrap.dataset.icon); ipal.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.icon === wrap.dataset.icon)); };
+    Object.keys(ICONS).forEach(k => {
+      const b = document.createElement('button'); b.dataset.icon = k; b.setAttribute('aria-label', k); b.innerHTML = svgIcon(k);
+      b.onclick = () => { wrap.dataset.icon = k; syncIcon(); ipal.classList.add('hidden'); settingsDirty = true; };
+      ipal.appendChild(b);
+    });
+    ib.onclick = () => ipal.classList.toggle('hidden');
     const row = document.createElement('div'); row.className = 'row';
     const sw = document.createElement('button'); sw.className = 'swatch'; sw.innerHTML = '<i></i>'; sw.setAttribute('aria-label', 'Choose colour');
     const name = document.createElement('input'); name.className = 'field'; name.value = c.name; name.placeholder = 'Category name';
@@ -1130,8 +1208,9 @@
       b.onclick = () => { wrap.dataset.color = id; sync(); pal.classList.add('hidden'); };
       pal.appendChild(b);
     });
-    sw.onclick = () => pal.classList.toggle('hidden');
-    row.append(sw, name, del); wrap.append(row, pal); sync();
+    sw.onclick = () => { pal.classList.toggle('hidden'); ipal.classList.add('hidden'); };
+    const ibOpen = ib.onclick; ib.onclick = () => { ibOpen(); pal.classList.add('hidden'); };
+    row.append(sw, ib, name, del); wrap.append(row, pal, ipal); sync(); syncIcon();
     return wrap;
   }
   function fillSettings() {
@@ -1144,9 +1223,9 @@
   $('settings').addEventListener('input', () => { settingsDirty = true; });
   $('settings').addEventListener('click', e => { if (e.target.closest('.palette button, .x, #addCat')) settingsDirty = true; });
   $('back').onclick = () => { fillSettings(); say('Changes discarded'); };
-  $('addCat').onclick = () => { const r = catRow({ name: '', color: 'GRAY' }); $('catRows').appendChild(r); r.querySelector('input').focus(); };
+  $('addCat').onclick = () => { const r = catRow({ name: '', color: 'GRAY', icon: 'star' }); $('catRows').appendChild(r); r.querySelector('input').focus(); };
   $('save').onclick = () => {
-    const cats = [...$('catRows').children].map(r => ({ name: r.querySelector('input').value, color: r.dataset.color }));
+    const cats = [...$('catRows').children].map(r => ({ name: r.querySelector('input').value, color: r.dataset.color, icon: r.dataset.icon }));
     $('save').disabled = true; $('save').textContent = 'Saving…';
     server('saveSettings', [{ calendar: $('calName').value, cats }])
       .then(init => { S = init.settings; hist = []; renderCats(); renderTimer(); fillSettings(); centerSelectedCat(false); say('Settings saved'); })

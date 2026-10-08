@@ -14,7 +14,8 @@ The app runs as *you*: it only ever touches your own calendar, and creates a cal
 
 ## Features
 
-- **Hold to start**: pick a category, then hold the big timer circle for 3 seconds while it shakes and swells; when it pops, the category's colour floods the screen and the session starts. Hold again to stop: the ring drains, then the liquid breaks into iron filings that follow magnetic field lines into the circle, which swells and pops back. Pick another category and hold to switch.
+- **Category picker**: a floating glass pill of icons with a springy sliding highlight; each category has its own icon (picked automatically, changeable in Settings).
+- **Hold to start**: pick a category, then hold the big timer circle for 3 seconds while it shakes and swells; when it pops, the category's colour floods the screen and the session starts. Hold again to stop: as the ring drains, the liquid gradually dissolves into iron filings that line up along magnetic field lines and drift in, then get pulled into the circle, which swells and pops back. Pick another category and hold to switch.
 - **Undo a stop**: an Undo toast, plus a "Continue" button with a still-ticking clock for 30 minutes, picks the same session back up as if it never stopped.
 - **Focus screen**: starting a session floods the screen with the category's colour in a liquid fill; the focus view shows the timer and the category in large type, and holding the circle stops it. The ⌄ button sucks the liquid into a small bubble you can carry around the app; tap it to pour focus mode back out.
 - **Today timeline**: a zoomable vertical line of today's sessions as coloured blobs (pinch or ± to zoom); tap a blob for details and editing.
