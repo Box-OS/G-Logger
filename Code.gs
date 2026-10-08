@@ -64,14 +64,16 @@ function runningEvent_(s) {
 }
 
 // Starts a timer. If one is already running it's stopped first, so tapping another category switches.
-function start(catName, title) {
+// startMs is the moment the phone started counting, so the server's clock matches what's on screen.
+function start(catName, title, startMs) {
   if (readJSON('running')) stop();
   props().deleteProperty('lastStopped');   // switching tasks isn't something to undo
   const st = getSettings();
   const cat = st.cats.find(c => c.name === catName);
   if (!cat) throw new Error('Unknown category: ' + catName);
   const cal = getCalendar_(st.calendar);
-  const now = new Date();
+  const t = Date.now(), want = Number(startMs);
+  const now = new Date(want && Math.abs(t - want) < 5 * 60000 ? Math.min(t, want) : t);
   const ev = cal.createEvent('⏱ ' + label(cat.name, title), now, new Date(now.getTime() + 60000));
   ev.setColor(CalendarApp.EventColor[cat.color]);
   const s = { calId: cal.getId(), id: ev.getId(), cat: cat.name, color: cat.color, title: title || '', start: now.getTime() };

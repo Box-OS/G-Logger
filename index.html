@@ -70,7 +70,7 @@
   .face { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; pointer-events:none; }
   .dial .what { font-size:15px; font-weight:600; letter-spacing:-.01em; max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .dial .sub { font-size:13px; color:#6A707A; max-width:66%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-height:18px; margin-top:-4px; }
-  .dial .clock { font-size:clamp(46px, 15vw, 60px); font-weight:600; line-height:1; letter-spacing:-.045em; font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
+  .dial .clock { font-size:clamp(40px, 13vw, 52px); font-weight:600; line-height:1; letter-spacing:-.045em; font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
   .dial.idle .clock { color:#C4C7CD; }
   .dial .hint { font-size:13px; font-weight:500; color:#6A707A; }
   #adjust { display:flex; align-items:center; justify-content:center; gap:10px; margin:18px auto 0; }
@@ -315,7 +315,7 @@
   :root[data-sport] { --disp:'Barlow Condensed', 'Geist', sans-serif; }
   :root[data-sport] body { font-family:'Barlow', 'Geist', -apple-system, system-ui, sans-serif; }
   :root[data-sport] h1 { font-family:var(--disp); font-style:italic; font-weight:800; font-size:30px; letter-spacing:.01em; text-transform:uppercase; }
-  :root[data-sport] .dial .clock { font-family:var(--disp); font-weight:700; font-size:clamp(66px, 21vw, 86px); letter-spacing:0; }
+  :root[data-sport] .dial .clock { font-family:var(--disp); font-weight:700; font-size:clamp(50px, 16vw, 66px); letter-spacing:.01em; }
   :root[data-sport] .dial .what { font-family:var(--disp); font-style:italic; font-weight:800; font-size:21px; letter-spacing:.02em; text-transform:uppercase; }
   :root[data-sport] .dial .hint, :root[data-sport] #fhint, :root[data-sport] #fmeta { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
   :root[data-sport] .dial .ring, :root[data-sport] .dial .track { stroke-width:4.6; }
@@ -1054,12 +1054,13 @@
     running = { cat: c.name, color: c.color, title, start: t0 };
     selected = c.name;
     renderTimer(); say('');
-    server('start', [c.name, title])
+    server('start', [c.name, title, t0])
       .then(s => {
         if (my !== seq) return;
-        const shift = running ? running.start - t0 : 0;   // +5 tapped before the server answered
+        const local = running ? running.start : t0;         // includes any +5 tapped before the server answered
         running = s;
-        if (shift) { running.start += shift; syncStart(); }
+        if (Math.abs(s.start - local) > 1000) { running.start = local; syncStart(); }
+        else running.start = local;                          // never let the clock jump back
         renderTimer(); say('Logging to ' + S.calendar); loadToday();
       })
       .catch(e => { if (my === seq) { running = prev; renderTimer(); } say("Couldn't start: " + e.message); });
