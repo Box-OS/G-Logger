@@ -214,25 +214,31 @@
   /* ---------- category picker: floating glass pill with a sliding highlight ---------- */
   .ico { display:grid; place-items:center; flex:none; }
   .ico svg { width:26px; height:26px; display:block; }
-  :root:not([data-sport]) #cats {
-    position:relative; display:flex; gap:0; padding:6px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; overscroll-behavior-x:contain;
-    border-radius:999px; background:color-mix(in srgb, var(--surface) 70%, transparent);
+  :root:not([data-sport]) #catWrap {
+    position:relative; margin-top:30px; padding:6px 0; overflow:hidden; border-radius:999px;
+    background:color-mix(in srgb, var(--surface) 70%, transparent);
     -webkit-backdrop-filter:blur(20px) saturate(1.6); backdrop-filter:blur(20px) saturate(1.6);
     border:1px solid var(--line); box-shadow:0 12px 34px rgba(10,11,13,.08), inset 0 1px 0 rgba(255,255,255,.45);
   }
+  :root[data-sport] #catWrap { position:relative; margin-top:26px; }
+  :root:not([data-sport]) #cats {
+    display:flex; gap:0; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; overscroll-behavior-x:contain;
+    scroll-snap-type:x mandatory; padding:0 calc(50% - 38px); perspective:420px; perspective-origin:50% 50%;
+    -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%); mask-image:linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+  }
   :root:not([data-sport]) #cats::-webkit-scrollbar { display:none; }
   :root:not([data-sport]) .cat {
-    position:relative; z-index:1; flex:1 0 23%; min-width:74px; height:66px; padding:0 6px; gap:3px;
+    position:relative; z-index:1; flex:0 0 76px; height:66px; padding:0 6px; gap:3px; scroll-snap-align:center; will-change:transform;
     flex-direction:column; align-items:center; justify-content:center; border:0; border-radius:999px; background:transparent;
-    font-size:12.5px; font-weight:600; color:var(--ink); transition:color .25s ease, transform .15s ease;
+    font-size:12.5px; font-weight:600; color:var(--ink); transition:color .25s ease;
   }
   :root:not([data-sport]) .cat .lbl { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   :root:not([data-sport]) .cat.active { background:transparent; color:color-mix(in srgb, var(--cc) 78%, var(--ink)); }
   #catHL {
-    position:absolute; z-index:0; top:6px; left:0; height:66px; width:0; border-radius:999px; pointer-events:none; opacity:0;
+    position:absolute; z-index:0; top:6px; left:50%; height:66px; width:90px; margin-left:-45px; border-radius:999px; pointer-events:none; opacity:0;
     background:color-mix(in srgb, var(--cc, #888) 17%, transparent);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 1px 2px rgba(10,11,13,.06);
-    transition:transform .5s cubic-bezier(.3,1.35,.45,1), width .5s cubic-bezier(.3,1.35,.45,1), background-color .3s ease, opacity .2s ease;
+    transition:background-color .3s ease, opacity .2s ease;
   }
   #catHL.show { opacity:1; }
   :root[data-sport] #catHL { display:none; }
@@ -243,6 +249,8 @@
   .ipal button { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; color:var(--muted); background:var(--surface); border:1px solid var(--line); }
   .ipal button svg { width:20px; height:20px; }
   .ipal button.on { color:var(--paper); background:var(--ink); border-color:transparent; }
+
+  #hapticL { position:fixed; left:-200px; top:0; width:1px; height:1px; opacity:0; overflow:hidden; pointer-events:none; }
 
   /* ---------- settings switch ---------- */
   .setrow { display:flex; align-items:center; gap:14px; padding:14px 16px; margin-bottom:24px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
@@ -272,7 +280,7 @@
   :root[data-sport] .entry, :root[data-sport] .setrow, :root[data-sport] #peek { border-radius:14px; }
   :root[data-sport] .pillbtn, :root[data-sport] #resume, :root[data-sport] #adjust button { font-family:var(--disp); font-weight:700; font-size:16px; letter-spacing:.05em; text-transform:uppercase; }
   /* swipeable category picker: the centred card is the selected one */
-  :root[data-sport] #cats { position:relative; display:flex; gap:12px; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; overscroll-behavior-x:contain; scrollbar-width:none; margin:0 -16px; padding:8px calc(50% - 76px) 12px; }
+  :root[data-sport] #cats { perspective:700px; perspective-origin:50% 50%; position:relative; display:flex; gap:12px; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; overscroll-behavior-x:contain; scrollbar-width:none; margin:0 -16px; padding:8px calc(50% - 76px) 12px; }
   :root[data-sport] #cats::-webkit-scrollbar { display:none; }
   :root[data-sport] .cat {
     flex:0 0 152px; height:152px; padding:14px; border:0; border-radius:20px; flex-direction:column; align-items:flex-start; justify-content:space-between; gap:0;
@@ -314,8 +322,7 @@
     </div>
     <button id="cancel" class="hidden">Discard this session</button>
     <button id="resume" class="hidden"></button>
-    <input id="title" class="field" placeholder="What are you working on? (optional)" autocomplete="off">
-    <div id="cats"></div>
+    <div id="catWrap"><div id="catHL"></div><div id="cats"></div></div>
   </section>
 
   <!-- ===== today timeline ===== -->
@@ -342,6 +349,10 @@
       <div><b>Sport mode</b><span>Bold condensed type and a swipeable category picker</span></div>
       <button id="sportToggle" class="switch" role="switch" aria-checked="false" aria-label="Sport mode"><i></i></button>
     </div>
+    <div class="setrow">
+      <div><b>Sounds</b><span>Ticks, hums and pops. Follows your phone's silent switch.</span></div>
+      <button id="soundToggle" class="switch" role="switch" aria-checked="true" aria-label="Sounds"><i></i></button>
+    </div>
     <label for="calName">Log to calendar</label>
     <input id="calName" class="field" placeholder="Log">
     <p class="hint">Created if it doesn't exist. Type <b>primary</b> to use your main calendar.</p>
@@ -362,6 +373,7 @@
   </nav>
 
   <div id="msg" role="status"></div>
+  <label id="hapticL" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
 
   <!-- ===== focus screen ===== -->
   <div id="focus" class="hidden" aria-live="polite">
@@ -467,6 +479,70 @@
   };
   applyTheme();
 
+  // ---------- haptics ----------
+  // Android can vibrate. iPhone Safari can't, but toggling a hidden iOS switch gives a light tap on recent iOS.
+  function haptic(pattern) {
+    try { if (navigator.vibrate && navigator.vibrate(pattern || 10)) return; } catch (e) {}
+    try { $('hapticL').click(); } catch (e) {}
+  }
+
+  // ---------- sounds (synthesised, nothing to download) ----------
+  let soundOn = true, actx = null;
+  try { soundOn = localStorage.getItem('glog-sound') !== '0'; } catch (e) {}
+  function ac() {
+    if (!soundOn) return null;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      if (actx.state === 'suspended') actx.resume();
+      return actx;
+    } catch (e) { return null; }
+  }
+  document.addEventListener('pointerdown', () => { ac(); }, { passive: true });   // browsers only allow audio after a touch
+  function blip(f, dur, type, gain, f2, when) {
+    const a = ac(); if (!a) return;
+    const t = a.currentTime + (when || 0), o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
+    if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(gain || .05, t + .008); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + .03);
+  }
+  function swoosh(dur, gain, f1, f2) {
+    const a = ac(); if (!a) return;
+    const t = a.currentTime, n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    const src = a.createBufferSource(), flt = a.createBiquadFilter(), g = a.createGain();
+    src.buffer = buf; flt.type = 'lowpass'; flt.Q.value = 3;
+    flt.frequency.setValueAtTime(f1, t); flt.frequency.exponentialRampToValueAtTime(f2, t + dur * .8);
+    g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + dur * .3); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    src.connect(flt).connect(g).connect(a.destination); src.start(t); src.stop(t + dur);
+  }
+  const sfx = {
+    tick() { blip(1900, .03, 'triangle', .035); },
+    start() { blip(240, .16, 'sine', .11, 720); swoosh(.95, .05, 260, 2600); },
+    pop() { blip(620, .12, 'sine', .1, 200); blip(1400, .04, 'triangle', .03, 0, .02); },
+    soft() { blip(880, .08, 'sine', .05, 1320); },
+    hum() {   // builds while you hold to stop, then "zips" into the circle
+      const a = ac(); if (!a) return { set() {}, zip() {}, stop() {} };
+      const t = a.currentTime, g = a.createGain(), o1 = a.createOscillator(), o2 = a.createOscillator();
+      o1.type = 'sine'; o2.type = 'triangle'; o1.frequency.value = 80; o2.frequency.value = 121;
+      g.gain.value = .0001; o1.connect(g); o2.connect(g); g.connect(a.destination); o1.start(t); o2.start(t);
+      const end = (at) => { g.gain.cancelScheduledValues(a.currentTime); g.gain.setTargetAtTime(.0001, at, .06); o1.stop(at + .4); o2.stop(at + .4); };
+      return {
+        set(p) { const now = a.currentTime; g.gain.setTargetAtTime(.0001 + .045 * p * p, now, .05); o1.frequency.setTargetAtTime(80 + 70 * p, now, .05); o2.frequency.setTargetAtTime(121 + 105 * p, now, .05); },
+        zip() { const now = a.currentTime; o1.frequency.exponentialRampToValueAtTime(520, now + .6); o2.frequency.exponentialRampToValueAtTime(780, now + .6); g.gain.setTargetAtTime(.06, now, .05); end(now + .6); },
+        stop() { end(a.currentTime); },
+      };
+    },
+  };
+  let hum = null;
+  $('soundToggle').onclick = () => {
+    soundOn = !soundOn;
+    try { localStorage.setItem('glog-sound', soundOn ? '1' : '0'); } catch (e) {}
+    $('soundToggle').setAttribute('aria-checked', String(soundOn));
+    if (soundOn) sfx.soft();
+  };
+  $('soundToggle').setAttribute('aria-checked', String(soundOn));
+
   // ---------- category icons ----------
   const ICONS = {
     target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
@@ -508,7 +584,7 @@
       }
     } else delete document.documentElement.dataset.sport;
     $('sportToggle').setAttribute('aria-checked', String(sport));
-    if (S) { centerSelectedCat(false); requestAnimationFrame(placeCatHighlight); }
+    if (S) { centerSelectedCat(false); curveCats(); requestAnimationFrame(placeCatHighlight); }
   }
   applySport();
   $('sportToggle').onclick = () => {
@@ -516,36 +592,40 @@
     try { localStorage.setItem('glog-sport', sport ? '1' : '0'); } catch (e) {}
     applySport(); say(sport ? 'Sport mode on' : 'Sport mode off');
   };
+  // The highlight stays in the middle; the wheel turns underneath it.
   function placeCatHighlight() {
     const hl = $('catHL'); if (!hl) return;
-    const b = [...$('cats').querySelectorAll('.cat')].find(x => x.dataset.name === selected);
-    if (!b) { hl.classList.remove('show'); return; }
-    hl.style.setProperty('--cc', hex(catByName(selected).color));
-    hl.style.width = b.offsetWidth + 'px';
-    hl.style.transform = `translateX(${b.offsetLeft}px)`;
+    const c = selected && catByName(selected);
+    if (!c) { hl.classList.remove('show'); return; }
+    hl.style.setProperty('--cc', hex(c.color));
     hl.classList.add('show');
   }
-  window.addEventListener('resize', () => { if (S) placeCatHighlight(); });
-  function centerSelectedCat(smooth, always) {
-    if (!sport && !always) return;
+  window.addEventListener('resize', () => { if (S) { centerSelectedCat(false); curveCats(); } });
+  // Curved wheel: items bend away and shrink with distance from the centre.
+  let curveRaf = 0;
+  function curveCats() {
+    cancelAnimationFrame(curveRaf);
+    curveRaf = requestAnimationFrame(() => {
+      const cats = $('cats'), mid = cats.scrollLeft + cats.clientWidth / 2, base = sport ? 1 : 1.12;
+      let best = null, bestD = Infinity;
+      cats.querySelectorAll('.cat').forEach(b => {
+        const o = (b.offsetLeft + b.offsetWidth / 2 - mid) / b.offsetWidth, a = Math.max(-3, Math.min(3, o)), m = Math.abs(a);
+        b.style.transition = 'background-color .25s ease, color .25s ease';
+        b.style.transform = `rotateY(${(a * (sport ? 18 : 21)).toFixed(1)}deg) translateZ(${(-m * (sport ? 36 : 22)).toFixed(1)}px) scale(${(base - Math.min(.45, m * .15)).toFixed(3)})`;
+        b.style.opacity = (1 - Math.min(.6, m * .16)).toFixed(2);
+        if (Math.abs(o) < bestD) { bestD = Math.abs(o); best = b; }
+      });
+      if (best && best.dataset.name !== selected && !holding) {   // whatever sits in the middle is selected
+        selected = best.dataset.name; renderTimer();
+        sfx.tick(); haptic(6);
+      }
+    });
+  }
+  function centerSelectedCat(smooth) {
     const cats = $('cats'), b = [...cats.querySelectorAll('.cat')].find(x => x.dataset.name === selected);
     if (b) cats.scrollTo({ left: b.offsetLeft + b.offsetWidth / 2 - cats.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
   }
-  // In sport mode the card that settles in the middle becomes the selection.
-  let catScrollT = 0;
-  $('cats').addEventListener('scroll', () => {
-    if (!sport) return;
-    clearTimeout(catScrollT);
-    catScrollT = setTimeout(() => {
-      const cats = $('cats'), mid = cats.scrollLeft + cats.clientWidth / 2;
-      let best = null, bestD = Infinity;
-      [...cats.querySelectorAll('.cat')].forEach(b => { const d = Math.abs(b.offsetLeft + b.offsetWidth / 2 - mid); if (d < bestD) { bestD = d; best = b; } });
-      if (best && best.dataset.name !== selected) {
-        selected = best.dataset.name; renderTimer();
-        if (navigator.vibrate) navigator.vibrate(6);
-      }
-    }, 110);
-  }, { passive: true });
+  $('cats').addEventListener('scroll', curveCats, { passive: true });
 
   // ---------- screens (swipe between them) ----------
   const PAGES = ['timer', 'timeline', 'history', 'settings'];
@@ -588,21 +668,21 @@
   let lastStopped = null, overlayAnim = false, resumeTick = 0;
 
   function renderCats() {
-    $('cats').innerHTML = '<div id="catHL"></div>';
+    $('cats').innerHTML = '';
     S.cats.forEach(c => {
       const b = document.createElement('button');
       b.className = 'cat'; paint(b, c.color);
       b.innerHTML = `<span class="ico">${svgIcon(iconOf(c))}</span><span class="lbl"></span>`;
       b.lastChild.textContent = c.name;
       b.dataset.name = c.name;
-      b.onclick = () => { selected = c.name; renderTimer(); centerSelectedCat(true, true); };
+      b.onclick = () => { if (selected !== c.name) { selected = c.name; renderTimer(); sfx.tick(); haptic(6); } centerSelectedCat(true); };
       $('cats').appendChild(b);
     });
   }
 
   function holdAction() {
     if (!running) return selected ? 'start' : null;
-    if ((selected && selected !== running.cat) || $('title').value.trim()) return 'switch';
+    if (selected && selected !== running.cat) return 'switch';
     return 'stop';
   }
   function setRing(p) { (overlayAnim ? ['ring'] : ['ring', 'fring']).forEach(id => { const r = $(id); r.setAttribute('stroke-dasharray', `${(p * 100).toFixed(2)} 100`); r.style.opacity = p > 0.005 ? 1 : 0; }); }
@@ -690,6 +770,8 @@
     if (holding || !act || overlayAnim) return;
     holding = true; holdAct = act; holdT0 = performance.now(); activeDial().classList.add('holding');
     mag = act === 'stop' && focusOpen() && !reduced ? startMagnet() : null;
+    hum = act === 'stop' ? sfx.hum() : null;
+    let lastSec = 0;
     const step = now => {
       const p = Math.min(1, (now - holdT0) / HOLD_MS);
       if (act !== 'stop') setRing(p);   // the ring fills while you hold to start
@@ -698,6 +780,9 @@
         if (mag) mag.hold(p);           // the liquid slowly turns into filings that start drifting in
       }
       shakeDial(p);
+      if (hum) hum.set(p);
+      const sec = Math.floor((now - holdT0) / 1000);
+      if (sec > lastSec && p < 1) { lastSec = sec; haptic(8); sfx.tick(); }   // a tick each second you hold
       if (p >= 1) { holdEnd(true); return; }
       raf = requestAnimationFrame(step);
     };
@@ -709,13 +794,15 @@
     holding = false; cancelAnimationFrame(raf); $('dial').classList.remove('holding'); $('fdial').classList.remove('holding');
     const act = holdAct;
     if (done === true) {
-      if (navigator.vibrate) navigator.vibrate(act === 'stop' ? [12, 40, 30] : 22);
+      haptic(act === 'stop' ? [12, 40, 30] : 22);
+      if (act === 'stop') { if (hum) hum.zip(); } else sfx.start();
+      hum = null;
       if (act === 'stop') {
         const suck = focusOpen() && !reduced;
         overlayAnim = suck;
         stop();   // the timer is stopped first; then the liquid gets vacuumed away
-        if (suck && mag) mag.finish(() => { overlayAnim = false; closeFocus(); popDial($('dial'), true); });
-        else { if (mag) mag.cancel(); closeFocus(); popDial($('dial')); }
+        if (suck && mag) mag.finish(() => { overlayAnim = false; closeFocus(); popDial($('dial'), true); sfx.pop(); haptic(14); });
+        else { if (mag) mag.cancel(); closeFocus(); popDial($('dial')); sfx.pop(); }
         mag = null;
       } else {
         leaveMini();
@@ -728,6 +815,7 @@
       return;
     }
     if (mag) { mag.cancel(); mag = null; }   // let go early: filings fade, the liquid comes back
+    if (hum) { hum.stop(); hum = null; }
     const tap = performance.now() - holdT0 < 220;
     settleDial(); renderTimer();
     if (tap && running && !focusOpen()) openFocus(650);
@@ -818,7 +906,6 @@
     dial.addEventListener('keydown', e => { if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) holdStart(e); });
     dial.addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') holdEnd(false); });
   });
-  $('title').addEventListener('input', () => { if (running) renderTimer(); });
 
   // ----- forgot to start? move the start time -----
   const NUDGE_MIN = 5;
@@ -844,11 +931,10 @@
   function start(c) {
     if (startSync) syncStart();
     lastStopped = null;
-    const prev = running, title = $('title').value.trim(), my = ++seq;
+    const prev = running, title = '', my = ++seq;
     const t0 = Date.now();
     running = { cat: c.name, color: c.color, title, start: t0 };
     selected = c.name;
-    $('title').value = ''; $('title').blur();
     renderTimer(); say('');
     server('start', [c.name, title])
       .then(s => {
@@ -875,7 +961,7 @@
     const ls = lastStopped, my = ++seq;
     lastStopped = null;
     running = Object.assign({}, ls); delete running.end;
-    renderTimer(); say('Resumed ' + ls.cat);
+    renderTimer(); say('Resumed ' + ls.cat); sfx.soft(); haptic(10);
     server('resume')
       .then(s => { if (my === seq) { running = s; renderTimer(); loadToday(); } })
       .catch(e => { if (my === seq) { running = null; lastStopped = ls; renderTimer(); } say("Couldn't resume: " + e.message); });
@@ -1235,7 +1321,7 @@
 
   // ---------- boot ----------
   server('getInit')
-    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; lastStopped = init.lastStopped || null; selected = running ? running.cat : null; renderCats(); renderTimer(); loadToday(); fillSettings(); applySport(); })
+    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; lastStopped = init.lastStopped || null; selected = running ? running.cat : (init.settings.cats[0] || {}).name || null; renderCats(); renderTimer(); loadToday(); fillSettings(); applySport(); })
     .catch(e => { $('what').textContent = "Couldn't load"; $('sub').textContent = e.message; });
 </script>
 </body>
