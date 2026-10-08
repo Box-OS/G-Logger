@@ -165,6 +165,10 @@
   #fblob { position:absolute; display:none; width:42px; height:42px; padding:0; border-radius:50%; place-items:center; color:var(--on-f); background:transparent; }
   #fblob svg { width:20px; height:20px; }
   #focus.mini #fblob { display:grid; }
+  #focus.sucking .fcontent { opacity:0 !important; transition:none; }
+  #focus.sucking #liquid svg { display:none; }
+  #dial.pop { animation:dialpop .5s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes dialpop { 0% { transform:scale(var(--s0, 1.12)); } 35% { transform:scale(.92); } 65% { transform:scale(1.04); } 100% { transform:scale(1); } }
   #focus.mini .fcontent { display:none; }
   #focus.mini #liquid svg { display:none; }
   body.minimized header { padding-left:70px; }
@@ -404,7 +408,7 @@
   // ---------- timer ----------
   let selected = null;
   const HOLD_MS = 3000;
-  let lastStopped = null, fillAnim = false;
+  let lastStopped = null, overlayAnim = false;
 
   function renderCats() {
     $('cats').innerHTML = '';
@@ -457,59 +461,99 @@
       upd(); tick = setInterval(upd, 1000);
     } else {
       $('clock').textContent = '0:00:00';
-      if (focusVisible() && !holding && !fillAnim) closeFocus();
+      if (focusVisible() && !holding && !overlayAnim) closeFocus();
     }
     if (S) renderToday();
   }
 
-  let holding = false, holdT0 = 0, raf = 0, holdAct = null;
+  let holding = false, holdT0 = 0, raf = 0, holdAct = null, dialScale = 1;
   const focusVisible = () => !$('focus').classList.contains('hidden');
   const focusOpen = () => focusVisible() && !$('focus').classList.contains('mini');
+
+  // The circle shakes harder and grows while you hold; nothing else happens until 3 seconds.
+  function shakeDial(p, extra) {
+    const d = $('dial'), k = Math.pow(p, 1.4), amp = reduced ? 0 : 5 * k + (extra || 0);
+    dialScale = 1 + .12 * (1 - Math.pow(1 - p, 2)) + (extra ? extra / 60 : 0);
+    const dx = (Math.random() - .5) * 2 * amp, dy = (Math.random() - .5) * 2 * amp, rot = (Math.random() - .5) * 3 * k;
+    d.style.transition = 'none';
+    d.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${dialScale.toFixed(3)})`;
+  }
+  function popDial() {
+    const d = $('dial');
+    d.style.setProperty('--s0', dialScale.toFixed(3));
+    d.style.transform = ''; d.style.transition = '';
+    d.classList.remove('pop'); void d.offsetWidth; d.classList.add('pop');
+    setTimeout(() => d.classList.remove('pop'), 520);
+    dialScale = 1;
+  }
+  function settleDial() {
+    const d = $('dial');
+    d.style.transition = 'transform .3s cubic-bezier(.3,1.4,.5,1)'; d.style.transform = '';
+    dialScale = 1;
+  }
+
   function holdStart(e) {
     if (e) e.preventDefault();
     const act = holdAction();
-    if (holding || !act) return;
+    if (holding || !act || overlayAnim) return;
     holding = true; holdAct = act; holdT0 = performance.now(); $('dial').classList.add('holding');
-    const wasOpen = focusOpen();
     const filling = act !== 'stop';
-    if (filling) {   // the liquid rises around the circle while you hold
-      leaveMini();
-      focusColor(catByName(selected || running.cat).color);
-      cancelAnimationFrame(lvRaf); clearTimeout(fullT);
-      F.classList.remove('hidden', 'full'); document.body.classList.add('focusing');
-      setLevel(1);
-    }
     const step = now => {
       const p = Math.min(1, (now - holdT0) / HOLD_MS);
       setRing(filling ? p : 1 - p);
-      if (filling) setLevel(1 - p);
-      else if (wasOpen) { setLevel(p); F.style.setProperty('--fade', Math.max(0, 1 - p * 1.8)); }
+      shakeDial(p);
       if (p >= 1) { holdEnd(true); return; }
       raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
   }
+
   function holdEnd(done) {
     if (!holding) return;
     holding = false; cancelAnimationFrame(raf); $('dial').classList.remove('holding');
-    const act = holdAct, wasOpen = focusOpen();
+    const act = holdAct;
     if (done === true) {
-      if (navigator.vibrate) navigator.vibrate(18);
-      if (act === 'stop') { stop(); closeFocus(); }
-      else { start(catByName(selected || running.cat)); F.style.setProperty('--fade', 1); F.classList.add('full'); renderTimer(); }
+      if (navigator.vibrate) navigator.vibrate(act === 'stop' ? [12, 40, 30] : 22);
+      if (act === 'stop') {
+        const suck = focusOpen() && !reduced;
+        overlayAnim = suck;
+        stop();
+        if (suck) vacuum(() => { overlayAnim = false; closeFocus(); popDial(); });
+        else { closeFocus(); popDial(); }
+      } else {
+        leaveMini();
+        start(catByName(selected || running.cat));
+        popDial();
+        openFocus(1100);   // the liquid floods in once the hold is done
+      }
       return;
     }
     const tap = performance.now() - holdT0 < 220;
-    if (act === 'stop') {
-      if (wasOpen) { F.style.setProperty('--fade', 1); animateLevel(0, 280); }
-      renderTimer();
-      if (tap && !wasOpen) openFocus(650);
-      return;
-    }
-    // let go before the fill finished: drain away, nothing starts
-    if (tap && running) { closeFocus(); renderTimer(); openFocus(650); return; }
-    fillAnim = true; renderTimer();
-    animateLevel(1, reduced ? 1 : 380, () => { fillAnim = false; closeFocus(); });
+    settleDial(); renderTimer();
+    if (tap && running && !focusOpen()) openFocus(650);
+  }
+
+  // High-pressure vacuum: the liquid is yanked into the circle, accelerating and jittering.
+  function vacuum(done) {
+    const r = $('dial').getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const R0 = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy)), MS = 560;
+    F.classList.add('sucking'); F.style.transition = 'none';
+    setLevel(0);
+    const t0 = performance.now();
+    const step = now => {
+      const p = Math.min(1, (now - t0) / MS);
+      const e = Math.pow(p, 3.2);
+      const jit = (1 - p) * (p > .04 ? 1 : 0);
+      const rad = Math.max(0, R0 * (1 - e) + (Math.random() - .5) * 46 * jit);
+      const jx = cx + (Math.random() - .5) * 12 * jit, jy = cy + (Math.random() - .5) * 12 * jit;
+      F.style.clipPath = `circle(${rad.toFixed(1)}px at ${jx.toFixed(1)}px ${jy.toFixed(1)}px)`;
+      shakeDial(1, 3 + 6 * e);   // keeps swelling and rattling while it swallows the liquid
+      if (p < 1) { requestAnimationFrame(step); return; }
+      F.classList.remove('sucking'); F.style.clipPath = ''; F.style.transition = '';
+      done();
+    };
+    requestAnimationFrame(step);
   }
   const dial = $('dial');
   dial.addEventListener('pointerdown', holdStart);
