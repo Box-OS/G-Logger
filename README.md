@@ -21,7 +21,7 @@ The app runs as *you*: it only ever touches your own calendar, and creates a cal
 - **Hold to start and stop.** Pick a category on the arc-shaped picker, then hold the timer circle for 3 seconds. Starting floods the screen with the category's colour; stopping pulls it back into the circle like iron filings to a magnet.
 - **Focus screen** with the live timer and the category in large type. Minimise it into a floating bubble and tap to bring it back.
 - **Forgot to start?** Tap **+5** to move the start 5 minutes earlier.
-- **Stop confirmation**: a notification-style banner ("You logged 20m of Study") with **Undo**, plus a **Continue** button that resumes the same session.
+- **Stop confirmation**: a notification-style banner ("You logged 20m of Study") whose **Undo** removes that session, plus a **Continue** button that resumes it instead.
 
 **Your log**
 - **Google Calendar is the database.** Every session is a real, colour-coded event.

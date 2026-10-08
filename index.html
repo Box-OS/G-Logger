@@ -886,6 +886,7 @@
       $('fmeta').textContent = (running.title ? running.title + '  ·  ' : '') + 'Started ' + fmtTime(running.start);
       focusColor(running.color);
       upd(); tick = setInterval(upd, 1000);
+      showBubble();   // a running timer always has its focus bubble when focus isn't open
     } else {
       $('clock').textContent = '0:00:00';
       if (focusVisible() && !holding && !overlayAnim) closeFocus();
@@ -959,9 +960,11 @@
       } else {
         leaveMini();
         const s0 = dialScale;
+        noBubble = true;                 // the full liquid fill is coming, not the bubble
         start(catByName(selected || running.cat));
         settleDial();
         openFocus(1100);   // the liquid floods in once the hold is done
+        noBubble = false;
         dialScale = s0; popDial($('fdial'));
       }
       return;
@@ -1143,7 +1146,14 @@
     }, delay || 0);
   }
   function hideNotif() { clearTimeout(notifT); $('notif').classList.remove('show'); }
-  $('notifUndo').onclick = () => { hideNotif(); resume(); };
+  $('notifUndo').onclick = () => {   // Undo = this session never happened
+    hideNotif();
+    if (!lastStopped) return;
+    const ls = lastStopped; lastStopped = null; renderTimer(); haptic(10);
+    server('discardLastStopped')
+      .then(() => { say('Removed ' + ls.cat + ' from your log'); loadToday(); if (view === 'history') loadHistory(); })
+      .catch(e => { lastStopped = ls; renderTimer(); say("Couldn't remove it: " + e.message); });
+  };
   (() => {   // swipe the banner up to dismiss it
     const n = $('notif'); let y0 = null;
     n.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; y0 = e.clientY; n.classList.add('drag'); clearTimeout(notifT); });
@@ -1420,6 +1430,17 @@
     setClip(bigR(), true);
     clipT = setTimeout(() => { F.classList.add('full'); }, reduced ? 0 : 300);
     setTimeout(() => { if (!F.classList.contains('mini')) F.style.clipPath = ''; }, reduced ? 0 : 700);
+  }
+  // Show focus mode as the small bubble (top-left) without any animation.
+  let noBubble = false;
+  function showBubble() {
+    if (!running || noBubble || holding || overlayAnim || focusVisible()) return;
+    focusColor(running.color);
+    blobAt = { x: 16 + 21, y: 16 + 21 };
+    Object.assign($('fblob').style, { left: (blobAt.x - 21) + 'px', top: (blobAt.y - 21) + 'px' });
+    F.classList.remove('hidden', 'full'); F.classList.add('mini');
+    setLevel(0); setClip(21, false);
+    document.body.classList.add('minimized');
   }
   function leaveMini() {
     clearTimeout(clipT);

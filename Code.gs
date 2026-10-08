@@ -95,6 +95,14 @@ function stop() {
   return null;
 }
 
+// Undo after stopping: delete the session that was just saved.
+function discardLastStopped() {
+  const s = readJSON('lastStopped');
+  if (s) { const ev = runningEvent_(s); if (ev) ev.deleteEvent(); }
+  props().deleteProperty('lastStopped');
+  return null;
+}
+
 function dismissResume() {
   props().deleteProperty('lastStopped');
   return null;
