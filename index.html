@@ -197,7 +197,10 @@
   #filings { position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; display:none; }
   .fcontent { pointer-events:none; }
   .fcontent button { pointer-events:auto; }
-  #resume { display:flex; align-items:center; gap:10px; margin:16px auto 0; height:44px; padding:0 18px 0 16px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:14px; font-weight:600; }
+  #resume { display:flex; align-items:center; width:max-content; margin:16px auto 0; height:44px; padding:0 5px 0 16px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:14px; font-weight:600; }
+  #resumeGo { display:flex; align-items:center; gap:10px; height:100%; padding-right:6px; font-size:14px; font-weight:600; }
+  #resumeX { width:32px; height:32px; flex:none; border-radius:50%; display:grid; place-items:center; color:var(--muted); background:color-mix(in srgb, var(--ink) 6%, transparent); }
+  #resumeX svg { width:14px; height:14px; }
   #resume .rdot { width:9px; height:9px; border-radius:50%; background:var(--cc); animation:blink 1.6s ease-in-out infinite; }
   @keyframes blink { 50% { opacity:.3; } }
   #resume b { font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; }
@@ -371,7 +374,10 @@
       <button id="earlier" aria-label="Move start 5 minutes earlier">+5</button>
     </div>
     <button id="cancel" class="hidden">Discard this session</button>
-    <button id="resume" class="hidden"></button>
+    <div id="resume" class="hidden">
+      <button id="resumeGo"></button>
+      <button id="resumeX" aria-label="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
     <div id="catWrap"><div id="catHL"></div><div id="cats"></div></div>
   </section>
 
@@ -837,9 +843,9 @@
     $('resume').classList.toggle('hidden', !canResume);
     clearInterval(resumeTick);
     if (canResume) {
-      const r = $('resume');
+      const r = $('resumeGo');
       r.innerHTML = '<span class="rdot"></span><span></span><b></b>';
-      paint(r, lastStopped.color);
+      paint($('resume'), lastStopped.color);
       r.children[1].textContent = 'Continue ' + lastStopped.cat;
       const upd = () => {
         if (!lastStopped || Date.now() - lastStopped.end > 10 * 60000) { renderTimer(); return; }
@@ -1105,7 +1111,11 @@
       .then(s => { if (my === seq) { running = s; renderTimer(); loadToday(); } })
       .catch(e => { if (my === seq) { running = null; lastStopped = ls; renderTimer(); } say("Couldn't resume: " + e.message); });
   }
-  $('resume').onclick = resume;
+  $('resumeGo').onclick = resume;
+  $('resumeX').onclick = () => {   // dismiss: the stopped session stays as it is
+    lastStopped = null; renderTimer(); haptic(6);
+    server('dismissResume').catch(() => {});
+  };
 
   $('cancel').onclick = () => {
     clearTimeout(startSync); startSync = 0; lastStopped = null;

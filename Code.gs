@@ -95,6 +95,11 @@ function stop() {
   return null;
 }
 
+function dismissResume() {
+  props().deleteProperty('lastStopped');
+  return null;
+}
+
 // Undoes the last stop: the same calendar event keeps running from its original start.
 function resume() {
   if (readJSON('running')) throw new Error('A timer is already running.');
