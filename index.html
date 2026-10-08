@@ -441,6 +441,10 @@
       <div><b>Sport mode</b><span>Bold condensed type and a swipeable category picker</span></div>
       <button id="sportToggle" class="switch" role="switch" aria-checked="false" aria-label="Sport mode"><i></i></button>
     </div>
+    <div class="setrow">
+      <div><b>24-hour time</b><span>Show 14:30 instead of 2:30 PM</span></div>
+      <button id="h24Toggle" class="switch" role="switch" aria-checked="false" aria-label="24-hour time"><i></i></button>
+    </div>
 
     <label for="calName">Log to calendar</label>
     <input id="calName" class="field" placeholder="Log">
@@ -522,7 +526,10 @@
   const hex = c => (COLORS[c] || ['', '#888888'])[1];
   const fmt = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 3600)}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
   const fmtDur = ms => { const m = Math.round(ms / 60000); return m < 1 ? '<1m' : m < 60 ? m + 'm' : Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : ''); };
-  const fmtTime = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  let h24 = false;
+  try { const v = localStorage.getItem('glog-24h'); h24 = v ? v === '1' : !/[ap]/i.test(new Date(2000, 0, 1, 13).toLocaleTimeString([], { hour: 'numeric' })); } catch (e) {}
+  const fmtTime = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hourCycle: h24 ? 'h23' : 'h12' });
+  const fmtHour = ms => h24 ? fmtTime(ms) : new Date(ms).toLocaleTimeString([], { hour: 'numeric', hourCycle: 'h12' });
   let sayT = 0;
   const say = (t, action) => {
     const m = $('msg'); clearTimeout(sayT);
@@ -664,6 +671,13 @@
     sport = !sport;
     try { localStorage.setItem('glog-sport', sport ? '1' : '0'); } catch (e) {}
     applySport(); say(sport ? 'Sport mode on' : 'Sport mode off');
+  };
+  $('h24Toggle').setAttribute('aria-checked', String(h24));
+  $('h24Toggle').onclick = () => {
+    h24 = !h24; $('h24Toggle').setAttribute('aria-checked', String(h24));
+    try { localStorage.setItem('glog-24h', h24 ? '1' : '0'); } catch (e) {}
+    histShown = ''; renderTimer(); if (hist.length) showHistory(); if (S) renderToday();
+    say(h24 ? '24-hour time' : '12-hour time');
   };
   // The highlight stays in the middle; the wheel turns underneath it.
   function placeCatHighlight() {
@@ -1565,7 +1579,7 @@
       const d = new Date(t), mins = d.getHours() * 60 + d.getMinutes(), onHour = d.getMinutes() === 0;
       add('tick' + (onHour ? ' major' : ''), { top: y(t) + 'px' });
       if (mins % lab) continue;
-      add('hr' + (onHour ? '' : ' minor'), { top: y(t) + 'px' }, onHour ? d.toLocaleTimeString([], { hour: 'numeric' }) : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
+      add('hr' + (onHour ? '' : ' minor'), { top: y(t) + 'px' }, onHour ? fmtHour(t) : fmtTime(t));
     }
     if (nowY > -10 && nowY < TH + 10) {
       add('now', { top: nowY + 'px' });
