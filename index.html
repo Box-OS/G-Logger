@@ -226,7 +226,14 @@
   #today .zoom { position:sticky; top:8px; z-index:4; float:right; margin:-6px 0 0; padding:4px; gap:4px; border-radius:999px; background:color-mix(in srgb, var(--surface) 80%, transparent); border:1px solid var(--line); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); box-shadow:0 6px 18px rgba(10,11,13,.08); }
   #today .zoom button { width:36px; height:36px; border:0; background:transparent; color:var(--ink); font-size:20px; }
   #tl { clear:both; }
-  #timeline { touch-action:pan-x pan-y; }
+  /* fixed-length line: the page doesn't scroll, the window of time does */
+  #timeline { display:flex; flex-direction:column; overflow:hidden; padding-bottom:16px; }
+  #today { flex:1; min-height:0; display:flex; flex-direction:column; }
+  #tl { flex:1; min-height:0; overflow:hidden; touch-action:pan-x; cursor:grab;
+        -webkit-mask-image:linear-gradient(transparent, #000 18px, #000 calc(100% - 18px), transparent);
+                mask-image:linear-gradient(transparent, #000 18px, #000 calc(100% - 18px), transparent); }
+  #tl.drag { cursor:grabbing; }
+  #tl .blob { transition:transform .15s ease; }
   #tl .axis { position:absolute; left:50%; top:0; bottom:0; width:3px; margin-left:-1.5px; border-radius:2px; background:color-mix(in srgb, var(--ink) 10%, transparent); }
   #tl .tick { position:absolute; left:50%; width:10px; height:1px; margin-left:-5px; background:color-mix(in srgb, var(--ink) 22%, transparent); }
   #tl .tick.major { width:18px; height:2px; margin:-.5px 0 0 -9px; background:color-mix(in srgb, var(--ink) 30%, transparent); }
@@ -815,10 +822,7 @@
   window.addEventListener('resize', () => pager.scrollTo({ left: PAGES.indexOf(view) * pager.clientWidth }));
   document.querySelectorAll('#tabbar button').forEach(b => b.onclick = () => show(b.dataset.view));
   function scrollTimelineToNow() {
-    requestAnimationFrame(() => {
-      const n = document.querySelector('#tl .now'), pg = $('timeline');
-      if (n) pg.scrollTop = Math.max(0, n.offsetTop + $('tl').offsetTop - pg.clientHeight * .35);
-    });
+    requestAnimationFrame(() => { vStart = null; renderToday(); });
   }
 
   // ---------- timer ----------
@@ -1472,27 +1476,27 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !F.classList.contains('hidden')) $('fmin').click(); });
 
   // ---------- today timeline ----------
-  const SCALES = [30, 48, 72, 110, 170, 260, 400, 620];   // pixels per hour
-  const SMIN = 24, SMAX = 720;
-  let today = [], scale = 145, peekId = null, tlFrom = 0;
-  try { const v = Number(localStorage.getItem('glog-scale3')); if (v >= SMIN && v <= SMAX) scale = v; } catch (e) {}
-  // Zoom around the middle of the screen so the time you're looking at stays put.
-  // Zoom keeps the time under your fingers (or the screen's middle) where it is.
-  let zoomRaf = 0, zoomWant = null;
-  function setScale(v, anchorY) {
-    zoomWant = { v, anchorY };
-    if (zoomRaf) return;
-    zoomRaf = requestAnimationFrame(() => {   // at most one redraw per frame while pinching
-      zoomRaf = 0;
-      const { v, anchorY } = zoomWant, pg = $('timeline'), tl = $('tl');
-      const top = pg.getBoundingClientRect().top, off = anchorY == null ? pg.clientHeight / 2 : anchorY - top;
-      const at = tlFrom + (pg.scrollTop + off - tl.offsetTop - 14) / scale * 3600e3;
-      scale = Math.max(SMIN, Math.min(SMAX, v));
-      renderToday();
-      if (tlFrom) pg.scrollTop = 14 + (at - tlFrom) / 3600e3 * scale + tl.offsetTop - off;
-      clearTimeout(setScale.t); setScale.t = setTimeout(() => { try { localStorage.setItem('glog-scale3', String(Math.round(scale))); } catch (e) {} }, 400);
-    });
+  // The line is a fixed length; zoom changes how much of the day it covers.
+  const HOUR = 3600e3, SPMIN = 30 * 60e3, SPMAX = 24 * HOUR, PAD = 14;
+  let today = [], peekId = null, vStart = null, vSpan = null;   // visible window [vStart, vStart + vSpan]
+  try { const v = Number(localStorage.getItem('glog-span')); if (v >= SPMIN && v <= SPMAX) vSpan = v; } catch (e) {}
+  const lineLen = () => Math.max(60, $('tl').clientHeight - 2 * PAD);
+  function clampView() {
+    const d0 = dayStart(Date.now());
+    vSpan = Math.max(SPMIN, Math.min(SPMAX, vSpan));
+    vStart = Math.max(d0, Math.min(d0 + 24 * HOUR - vSpan, vStart));
   }
+  let drawRaf = 0;
+  const redraw = () => { if (!drawRaf) drawRaf = requestAnimationFrame(() => { drawRaf = 0; renderToday(); }); };
+  const saveSpan = () => { clearTimeout(saveSpan.t); saveSpan.t = setTimeout(() => { try { localStorage.setItem('glog-span', String(Math.round(vSpan))); } catch (e) {} }, 400); };
+  // Zoom so the time at screen-y `ay` stays at screen-y `ny` (lets two fingers zoom and drag at once).
+  function zoomAt(span, at, ny) {
+    vSpan = span; clampView();
+    const r = $('tl').getBoundingClientRect();
+    vStart = at - (ny - r.top - PAD) / lineLen() * vSpan;
+    clampView(); saveSpan(); redraw();
+  }
+  const timeAtY = cy => vStart + (cy - $('tl').getBoundingClientRect().top - PAD) / lineLen() * vSpan;
 
   function loadToday() {
     server('history', [dayStart(Date.now()), Date.now() + 60000])
@@ -1501,51 +1505,53 @@
   }
 
   function renderToday() {
-    const tl = $('tl'), now = Date.now(), H = 3600e3, PAD = 14;
+    const tl = $('tl'), now = Date.now();
     const items = today.slice();
     if (running) items.push({ id: '__live', live: true, cat: running.cat, title: running.title, color: running.color, start: running.start, end: now });
     const total = items.reduce((t, e) => t + (e.end - e.start), 0);
     $('todayTotal').textContent = total ? fmtDur(total) : '0m';
     $('todayDate').textContent = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
-    const d0 = dayStart(now);
-    const first = items.length ? Math.min(...items.map(e => e.start)) : now;
-    const from = Math.max(d0, Math.floor(Math.min(first, now - 2 * H) / H) * H);
-    const to = Math.ceil((now + 2 * H) / H) * H;   // leave room after now
-    const y = ms => PAD + (ms - from) / H * scale;
-    tlFrom = from;
+    const L = lineLen(), TH = L + 2 * PAD;
+    if (vSpan == null) vSpan = L / 145 * HOUR;            // default: about 145px per hour
+    if (vStart == null) vStart = now - vSpan * .35;     // Now sits a third of the way down
+    clampView();
+    const scale = L / vSpan * HOUR, from = vStart - PAD / scale * HOUR, to = vStart + vSpan + PAD / scale * HOUR;
+    const y = ms => PAD + (ms - vStart) / vSpan * L;
     tl.innerHTML = '';
-    tl.style.height = (y(to) + PAD) + 'px';
     const add = (cls, css, html) => { const el = document.createElement('div'); el.className = cls; Object.assign(el.style, css); if (html) el.textContent = html; tl.appendChild(el); return el; };
     add('axis', {});
     // The more you zoom in, the finer the marks: hours → 30 → 15 → 10 → 5 minutes.
     const ppm = scale / 60, STEPS = [5, 10, 15, 30, 60, 120, 180];
     const lab = STEPS.find(m => m * ppm >= 30) || 180, tik = STEPS.find(m => m * ppm >= 10) || lab;
     const nowY = y(now);
-    for (let t = from; t <= to; t += tik * 60000) {
+    for (let t = Math.ceil(from / (tik * 60000)) * tik * 60000; t <= to; t += tik * 60000) {
       const d = new Date(t), mins = d.getHours() * 60 + d.getMinutes(), onHour = d.getMinutes() === 0;
       add('tick' + (onHour ? ' major' : ''), { top: y(t) + 'px' });
       if (mins % lab) continue;
       add('hr' + (onHour ? '' : ' minor'), { top: y(t) + 'px' }, onHour ? d.toLocaleTimeString([], { hour: 'numeric' }) : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
     }
-    add('now', { top: nowY + 'px' });
-    add('nowlbl', { top: nowY + 'px' }).innerHTML = '<span>Now</span>';
+    if (nowY > -10 && nowY < TH + 10) {
+      add('now', { top: nowY + 'px' });
+      add('nowlbl', { top: nowY + 'px' }).innerHTML = '<span>Now</span>';
+    }
     let lastLabel = -1e9;
     items.sort((a, b) => a.start - b.start).forEach(e => {
-      const top = y(e.start), h = Math.max(24, (e.end - e.start) / H * scale);
+      const top = y(e.start), h = Math.max(24, (e.end - e.start) / HOUR * scale);
+      if (top > TH || top + h < 0) return;   // outside the window
       const b = document.createElement('button');
       b.className = 'blob' + (e.live ? ' live' : ''); paint(b, e.color);
       Object.assign(b.style, { top: top + 'px', height: h + 'px' });
       b.setAttribute('aria-label', `${e.cat}, ${fmtTime(e.start)} to ${e.live ? 'now' : fmtTime(e.end)}`);
       b.onclick = ev => { ev.stopPropagation(); peekId = peekId === e.id ? null : e.id; renderToday(); };
       tl.appendChild(b);
-      const mid = top + h / 2;
+      const mid = (Math.max(top, PAD) + Math.min(top + h, TH - PAD)) / 2;   // label the visible part
       if (mid - lastLabel >= 22) {
         const lb = add('blabel', { top: mid + 'px' }, e.cat); lastLabel = mid;
         if (h >= 40) { const sm = document.createElement('small'); sm.textContent = fmtDur(e.end - e.start); lb.appendChild(sm); lastLabel = mid + 8; }
       }
       if (peekId === e.id) {
         const p = document.createElement('div'); p.id = 'peek';
-        p.style.top = Math.max(0, mid - 40) + 'px';
+        p.style.top = Math.max(0, Math.min(TH - 110, mid - 40)) + 'px';
         p.innerHTML = '<div class="p1"></div><div class="p2"></div>';
         p.querySelector('.p1').textContent = e.cat;
         if (e.title) { const em = document.createElement('em'); em.textContent = ' · ' + e.title; p.querySelector('.p1').appendChild(em); }
@@ -1563,24 +1569,64 @@
   document.addEventListener('click', () => { if (peekId) { peekId = null; renderToday(); } });
   setInterval(() => { if (running && view === 'timeline') renderToday(); }, 30000);
 
-  // Pinch anywhere on the Today screen to zoom smoothly (vertical spread between the fingers sets the scale).
-  const TLP = $('timeline');
-  let pinch = null;
-  const span = t => Math.max(30, Math.abs(t[0].clientY - t[1].clientY));
-  TLP.addEventListener('touchstart', e => {
-    if (e.touches.length === 2) pinch = { d: span(e.touches), s: scale };
+  // One finger drags the day up and down; two fingers pinch to zoom (and drag) around the point between them.
+  const TL = $('tl'), TLP = $('timeline');
+  let g = null, fling = 0;
+  const mid = t => (t[0].clientY + t[1].clientY) / 2, gap = t => Math.max(30, Math.abs(t[0].clientY - t[1].clientY));
+  function startFling(v) {   // v in ms-of-day per ms
+    cancelAnimationFrame(fling); let last = performance.now();
+    const step = now => {
+      const dt = now - last; last = now; v *= Math.pow(.994, dt);
+      if (Math.abs(v) * 16 < vSpan / lineLen() * .3) return;
+      const s0 = vStart; vStart -= v * dt; clampView(); renderToday();
+      if (vStart !== s0) fling = requestAnimationFrame(step);
+    };
+    fling = requestAnimationFrame(step);
+  }
+  TL.addEventListener('touchstart', e => {
+    cancelAnimationFrame(fling);
+    const t = e.touches;
+    if (t.length === 2) g = { pinch: true, d: gap(t), span: vSpan, at: timeAtY(mid(t)) };
+    else if (t.length === 1) g = { x: t[0].clientX, y: t[0].clientY, s: vStart, lock: null, ly: t[0].clientY, lt: performance.now(), v: 0 };
   }, { passive: true });
-  TLP.addEventListener('touchmove', e => {
-    if (!pinch || e.touches.length !== 2) return;
-    e.preventDefault();
-    setScale(pinch.s * span(e.touches) / pinch.d, (e.touches[0].clientY + e.touches[1].clientY) / 2);
+  TL.addEventListener('touchmove', e => {
+    if (!g) return;
+    const t = e.touches;
+    if (g.pinch) {
+      if (t.length !== 2) return;
+      e.preventDefault(); zoomAt(g.span * g.d / gap(t), g.at, mid(t)); return;
+    }
+    const dx = t[0].clientX - g.x, dy = t[0].clientY - g.y;
+    if (!g.lock && Math.hypot(dx, dy) > 6) g.lock = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x';
+    if (g.lock !== 'y') return;   // sideways swipes still change pages
+    e.preventDefault(); TL.classList.add('drag');
+    const k = vSpan / lineLen(), now = performance.now(), dt = Math.max(1, now - g.lt);
+    g.v = .8 * ((t[0].clientY - g.ly) * k / dt) + .2 * g.v; g.ly = t[0].clientY; g.lt = now;
+    vStart = g.s - dy * k; clampView(); redraw();
   }, { passive: false });
-  TLP.addEventListener('touchend', e => { if (e.touches.length < 2) pinch = null; });
+  TL.addEventListener('touchend', e => {
+    if (!g) return;
+    if (e.touches.length) { if (g.pinch && e.touches.length === 1) g = null; return; }
+    if (g.lock === 'y' && performance.now() - g.lt < 80) startFling(g.v);
+    if (g.pinch || g.lock === 'y') saveSpan();
+    TL.classList.remove('drag'); g = null;
+  });
   ['gesturestart', 'gesturechange'].forEach(ev => TLP.addEventListener(ev, e => e.preventDefault()));   // stop iPhone zooming the whole page
-  TLP.addEventListener('wheel', e => {   // trackpad pinch on a laptop
-    if (!e.ctrlKey) return;
-    e.preventDefault(); setScale(scale * Math.exp(-e.deltaY * .01), e.clientY);
+  // Mouse: drag to pan, wheel to pan, ctrl/trackpad-pinch to zoom.
+  TL.addEventListener('mousedown', e => {
+    cancelAnimationFrame(fling);
+    const y0 = e.clientY, s0 = vStart; let moved = false; TL.classList.add('drag');
+    const mv = ev => { if (Math.abs(ev.clientY - y0) > 3) moved = true; vStart = s0 - (ev.clientY - y0) * vSpan / lineLen(); clampView(); redraw(); };
+    const up = () => { TL.classList.remove('drag'); removeEventListener('mousemove', mv); removeEventListener('mouseup', up);
+      if (moved) addEventListener('click', ev => ev.stopPropagation(), { capture: true, once: true }); };
+    addEventListener('mousemove', mv); addEventListener('mouseup', up);
+  });
+  TLP.addEventListener('wheel', e => {
+    e.preventDefault(); cancelAnimationFrame(fling);
+    if (e.ctrlKey) zoomAt(vSpan * Math.exp(e.deltaY * .01), timeAtY(e.clientY), e.clientY);
+    else { vStart += e.deltaY * vSpan / lineLen(); clampView(); redraw(); }
   }, { passive: false });
+  addEventListener('resize', () => { if (view === 'timeline') redraw(); });
 
   // ---------- settings ----------
   function catRow(c) {
