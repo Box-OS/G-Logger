@@ -771,7 +771,7 @@
   function scrollTimelineToNow() {
     requestAnimationFrame(() => {
       const n = document.querySelector('#tl .now'), pg = $('timeline');
-      if (n) pg.scrollTop = Math.max(0, n.offsetTop + $('tl').offsetTop - pg.clientHeight * .6);
+      if (n) pg.scrollTop = Math.max(0, n.offsetTop + $('tl').offsetTop - pg.clientHeight * .35);
     });
   }
 
@@ -1358,8 +1358,8 @@
   // ---------- today timeline ----------
   const SCALES = [30, 48, 72, 110, 170, 260, 400, 620];   // pixels per hour
   const SMIN = 24, SMAX = 720;
-  let today = [], scale = 72, peekId = null, tlFrom = 0;
-  try { const v = Number(localStorage.getItem('glog-scale2')); if (v >= SMIN && v <= SMAX) scale = v; } catch (e) {}
+  let today = [], scale = 145, peekId = null, tlFrom = 0;
+  try { const v = Number(localStorage.getItem('glog-scale3')); if (v >= SMIN && v <= SMAX) scale = v; } catch (e) {}
   // Zoom around the middle of the screen so the time you're looking at stays put.
   // Zoom keeps the time under your fingers (or the screen's middle) where it is.
   let zoomRaf = 0, zoomWant = null;
@@ -1374,7 +1374,7 @@
       scale = Math.max(SMIN, Math.min(SMAX, v));
       renderToday();
       if (tlFrom) pg.scrollTop = 14 + (at - tlFrom) / 3600e3 * scale + tl.offsetTop - off;
-      clearTimeout(setScale.t); setScale.t = setTimeout(() => { try { localStorage.setItem('glog-scale2', String(Math.round(scale))); } catch (e) {} }, 400);
+      clearTimeout(setScale.t); setScale.t = setTimeout(() => { try { localStorage.setItem('glog-scale3', String(Math.round(scale))); } catch (e) {} }, 400);
     });
   }
 
@@ -1394,7 +1394,7 @@
     const d0 = dayStart(now);
     const first = items.length ? Math.min(...items.map(e => e.start)) : now;
     const from = Math.max(d0, Math.floor(Math.min(first, now - 2 * H) / H) * H);
-    const to = Math.ceil((now + 1) / H) * H;
+    const to = Math.ceil((now + 2 * H) / H) * H;   // leave room after now
     const y = ms => PAD + (ms - from) / H * scale;
     tlFrom = from;
     tl.innerHTML = '';
