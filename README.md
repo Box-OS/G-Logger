@@ -23,6 +23,7 @@ The app runs as *you*: it only ever touches your own calendar, and creates a cal
 - **Instant UI**: taps update the screen immediately while saves happen in the background, and roll back with a clear message if a save fails.
 - **Optional detail** per session (e.g. `Deep work · EECS3101 PS2`) and a discard button for accidental starts.
 - **In-app settings**: choose the target calendar (created automatically if missing, or `primary`) and edit categories and their colours.
+- **Swipeable screens**: Timer, Today, History and Settings sit side by side; swipe between them on a phone or use the tab bar.
 - **Light and dark mode**, following the system by default with a manual toggle; mobile-first layout.
 
 ## How it works

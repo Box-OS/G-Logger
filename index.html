@@ -13,9 +13,10 @@
   :root[data-theme="dark"] { --paper:#121316; --surface:#1D1F23; --ink:#F1F2F4; --muted:#8E95A0; --line:rgba(241,242,244,.08); --danger:#F28B82; color-scheme:dark; }
 
   * { box-sizing:border-box; }
-  html { -webkit-text-size-adjust:100%; }
+  html { -webkit-text-size-adjust:100%; height:100%; }
   body {
-    margin:0 auto; padding:16px 16px 40px; max-width:460px; min-height:100vh;
+    margin:0 auto; padding:0; max-width:460px; height:100%; overflow:hidden;
+    display:flex; flex-direction:column;
     font-family:'Geist',-apple-system,system-ui,sans-serif; font-size:16px; line-height:1.4;
     background:var(--paper); color:var(--ink); -webkit-font-smoothing:antialiased;
     transition:background-color .25s ease, color .25s ease;
@@ -27,7 +28,15 @@
   button:disabled { opacity:.45; cursor:default; transform:none; }
   :focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
 
-  header { display:flex; align-items:center; gap:8px; height:44px; margin-bottom:18px; }
+  header { flex:none; display:flex; align-items:center; gap:8px; height:60px; padding:8px 16px 0; }
+  #pager { flex:1; min-height:0; display:flex; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scrollbar-width:none; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; }
+  #pager::-webkit-scrollbar { display:none; }
+  .page { flex:0 0 100%; min-width:0; scroll-snap-align:start; scroll-snap-stop:always; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; padding:14px 16px 40px; }
+  #tabbar { flex:none; display:flex; border-top:1px solid var(--line); background:var(--paper); padding:6px 6px max(8px, env(safe-area-inset-bottom)); }
+  #tabbar button { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 0 2px; color:var(--muted); font-size:11px; font-weight:600; }
+  #tabbar button svg { width:23px; height:23px; }
+  #tabbar button.on { color:var(--ink); }
+  #tabbar button:active { transform:none; }
   h1 { margin:0 auto 0 0; font-size:19px; font-weight:700; letter-spacing:-.025em; }
   .round { width:40px; height:40px; flex:none; border-radius:50%; background:var(--surface); border:1px solid var(--line); display:grid; place-items:center; color:var(--muted); }
   .round svg { width:19px; height:19px; }
@@ -76,7 +85,8 @@
   .cat.active { background:var(--cc); color:var(--on-cc); border-color:transparent; }
   .cat.active .dot { background:var(--on-cc); }
 
-  #msg { text-align:center; color:var(--muted); font-size:13px; min-height:18px; margin-top:16px; }
+  #msg { position:fixed; left:50%; bottom:calc(84px + env(safe-area-inset-bottom)); transform:translate(-50%, 8px); z-index:15; max-width:calc(100% - 48px); padding:9px 16px; border-radius:999px; background:var(--surface); color:var(--ink); border:1px solid var(--line); box-shadow:0 10px 30px rgba(0,0,0,.28); font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; opacity:0; pointer-events:none; transition:opacity .2s ease, transform .2s ease; }
+  #msg.show { opacity:1; transform:translate(-50%, 0); }
 
   /* ---------- history ---------- */
   .bar-row { display:flex; gap:8px; }
@@ -156,13 +166,14 @@
   #fcat { margin:0; font-size:clamp(56px, 17vw, 116px); font-weight:800; line-height:.88; letter-spacing:-.05em; overflow-wrap:anywhere; }
 
   /* ---------- today timeline ---------- */
-  #today { margin-top:36px; }
+  #today { margin-top:0; }
   .thead { display:flex; justify-content:space-between; align-items:center; margin:0 4px 14px; }
   .thead h2 { margin:0; font-size:17px; font-weight:700; letter-spacing:-.02em; }
+  .thead h2 #todayDate { margin:0; font-size:17px; font-weight:700; color:var(--ink); }
   .thead h2 span { margin-left:6px; font-size:15px; font-weight:500; color:var(--muted); font-variant-numeric:tabular-nums; }
   .zoom { display:flex; gap:6px; }
   .zoom button { width:34px; height:34px; border-radius:50%; background:var(--surface); border:1px solid var(--line); color:var(--muted); font-size:18px; line-height:1; }
-  #tl { position:relative; touch-action:pan-y; }
+  #tl { position:relative; touch-action:pan-x pan-y; }
   #tl .axis { position:absolute; left:64px; top:0; bottom:0; width:2px; margin-left:-1px; border-radius:1px; background:color-mix(in srgb, var(--ink) 11%, transparent); }
   #tl .hr { position:absolute; left:0; width:46px; text-align:right; font-size:11px; color:var(--muted); transform:translateY(-50%); font-variant-numeric:tabular-nums; }
   #tl .now { position:absolute; left:52px; width:24px; height:2px; margin-top:-1px; border-radius:1px; background:var(--ink); opacity:.5; }
@@ -184,19 +195,13 @@
 </head>
 <body>
   <header>
-    <h1 id="heading">G-Log</h1>
-    <nav id="tabs">
-      <button data-view="timer" class="on">Timer</button>
-      <button data-view="history">History</button>
-    </nav>
+    <h1 id="heading">Timer</h1>
     <button class="round" id="theme" aria-label="Switch light or dark mode"></button>
-    <button class="round" id="gear" aria-label="Settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
-    </button>
   </header>
 
+  <div id="pager">
   <!-- ===== timer ===== -->
-  <main id="timer">
+  <section class="page" id="timer">
     <button id="dial" class="idle" aria-live="polite">
       <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="46" fill="none" stroke-width="2.4"/><circle class="ring" id="ring" cx="50" cy="50" r="46" fill="none" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
       <span class="face">
@@ -214,24 +219,28 @@
     <button id="cancel" class="hidden">Discard this session</button>
     <input id="title" class="field" placeholder="What are you working on? (optional)" autocomplete="off">
     <div id="cats"></div>
-    <section id="today">
+  </section>
+
+  <!-- ===== today timeline ===== -->
+  <section class="page" id="timeline">
+    <div id="today">
       <div class="thead">
-        <h2>Today<span id="todayTotal"></span></h2>
+        <h2><span id="todayDate"></span><span id="todayTotal"></span></h2>
         <div class="zoom"><button id="zoomOut" aria-label="Zoom out">−</button><button id="zoomIn" aria-label="Zoom in">+</button></div>
       </div>
       <div id="tl"></div>
-    </section>
-  </main>
+    </div>
+  </section>
 
   <!-- ===== history ===== -->
-  <main id="history" class="hidden">
+  <section class="page" id="history">
     <div class="bar-row"><button class="pillbtn primary" id="addEntry">Add entry</button></div>
     <div id="histList"></div>
     <button class="pillbtn soft hidden" id="more">Show earlier</button>
-  </main>
+  </section>
 
   <!-- ===== settings ===== -->
-  <main id="settings" class="hidden">
+  <section class="page" id="settings">
     <label for="calName">Log to calendar</label>
     <input id="calName" class="field" placeholder="Log">
     <p class="hint">Created if it doesn't exist. Type <b>primary</b> to use your main calendar.</p>
@@ -239,11 +248,19 @@
     <div id="catRows"></div>
     <button id="addCat" class="ghost">+ Add category</button>
     <button id="save" class="pillbtn primary">Save settings</button>
-    <button id="back" class="ghost">Cancel</button>
+    <button id="back" class="ghost">Discard changes</button>
     <div id="setMsg" class="hint" style="text-align:center"></div>
-  </main>
+  </section>
+  </div>
 
-  <div id="msg"></div>
+  <nav id="tabbar">
+    <button data-view="timer" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M10 2.5h4"/></svg>Timer</button>
+    <button data-view="timeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v18"/><rect x="5.5" y="5" width="5" height="6" rx="2.5" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="2.5" fill="currentColor" stroke="none"/><path d="M14 8h6M14 16h4"/></svg>Today</button>
+    <button data-view="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>History</button>
+    <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Settings</button>
+  </nav>
+
+  <div id="msg" role="status"></div>
 
   <!-- ===== focus screen ===== -->
   <div id="focus" class="hidden" aria-live="polite">
@@ -289,7 +306,13 @@
   const fmt = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 3600)}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
   const fmtDur = ms => { const m = Math.round(ms / 60000); return m < 1 ? '<1m' : m < 60 ? m + 'm' : Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : ''); };
   const fmtTime = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  const say = t => { $('msg').textContent = t || ''; };
+  let sayT = 0;
+  const say = t => {
+    const m = $('msg'); clearTimeout(sayT);
+    if (!t) { m.classList.remove('show'); return; }
+    m.textContent = t; m.classList.add('show');
+    sayT = setTimeout(() => m.classList.remove('show'), 2800);
+  };
   const catByName = n => S.cats.find(c => c.name === n);
 
   // White or ink text, whichever contrasts more with the colour.
@@ -327,19 +350,40 @@
   };
   applyTheme();
 
-  // ---------- views ----------
-  function show(v) {
+  // ---------- screens (swipe between them) ----------
+  const PAGES = ['timer', 'timeline', 'history', 'settings'];
+  const TITLES = { timer: 'Timer', timeline: 'Today', history: 'History', settings: 'Settings' };
+  const pager = $('pager');
+  let tlScrolled = false, settingsDirty = false;
+  function setActive(v) {
+    if (v === view) return;
     view = v;
-    ['timer', 'history', 'settings'].forEach(id => $(id).classList.toggle('hidden', id !== v));
-    document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
-    $('tabs').classList.toggle('hidden', v === 'settings');
-    $('gear').classList.toggle('hidden', v === 'settings');
-    $('heading').textContent = v === 'settings' ? 'Settings' : 'G-Log';
-    say(''); $('setMsg').textContent = '';
+    document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+    $('heading').textContent = TITLES[v];
+    if (!S) return;
     if (v === 'history') loadHistory();
-    if (v === 'timer' && S) loadToday();
+    if (v === 'timeline') { loadToday(); if (!tlScrolled) { tlScrolled = true; scrollTimelineToNow(); } }
+    if (v === 'settings' && !settingsDirty) fillSettings();
   }
-  document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => show(b.dataset.view));
+  function show(v, instant) {
+    const i = PAGES.indexOf(v);
+    pager.scrollTo({ left: i * pager.clientWidth, behavior: instant || reducedMotion ? 'auto' : 'smooth' });
+    setActive(v);
+  }
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let pageT = 0;
+  pager.addEventListener('scroll', () => {
+    clearTimeout(pageT);
+    pageT = setTimeout(() => setActive(PAGES[Math.round(pager.scrollLeft / pager.clientWidth)] || 'timer'), 60);
+  }, { passive: true });
+  window.addEventListener('resize', () => pager.scrollTo({ left: PAGES.indexOf(view) * pager.clientWidth }));
+  document.querySelectorAll('#tabbar button').forEach(b => b.onclick = () => show(b.dataset.view));
+  function scrollTimelineToNow() {
+    requestAnimationFrame(() => {
+      const n = document.querySelector('#tl .now'), pg = $('timeline');
+      if (n) pg.scrollTop = Math.max(0, n.offsetTop + $('tl').offsetTop - pg.clientHeight * .6);
+    });
+  }
 
   // ---------- timer ----------
   let selected = null;
@@ -587,7 +631,7 @@
     const entry = { id: editing && editing.id, cat: sheetCat, title: $('sheetText').value.trim(), start, end };
     $('sheetSave').disabled = true; $('sheetSave').textContent = 'Saving…';
     server('saveEntry', [entry])
-      .then(() => { closeSheet(); say(entry.id ? 'Entry updated' : 'Entry added'); if (view === 'history') loadHistory(); loadToday(); })
+      .then(() => { closeSheet(); say(entry.id ? 'Entry updated' : 'Entry added'); hist = []; if (view === 'history') loadHistory(); loadToday(); })
       .catch(e => { $('sheetErr').textContent = "Couldn't save: " + e.message; })
       .finally(() => { $('sheetSave').disabled = false; $('sheetSave').textContent = 'Save'; });
   };
@@ -687,6 +731,7 @@
     if (running) items.push({ id: '__live', live: true, cat: running.cat, title: running.title, color: running.color, start: running.start, end: now });
     const total = items.reduce((t, e) => t + (e.end - e.start), 0);
     $('todayTotal').textContent = total ? fmtDur(total) : '';
+    $('todayDate').textContent = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
     const d0 = dayStart(now);
     const first = items.length ? Math.min(...items.map(e => e.start)) : now;
     const from = Math.max(d0, Math.floor(Math.min(first, now - 2 * H) / H) * H);
@@ -733,7 +778,7 @@
     if (!items.length) add('hr', { top: '0px', left: '84px', width: 'auto', textAlign: 'left', transform: 'none', fontSize: '14px' }, 'Nothing logged yet today.');
   }
   document.addEventListener('click', () => { if (peekId) { peekId = null; renderToday(); } });
-  setInterval(() => { if (running && view === 'timer') renderToday(); }, 30000);
+  setInterval(() => { if (running && view === 'timeline') renderToday(); }, 30000);
 
   // pinch to zoom
   let pinch = null;
@@ -771,27 +816,29 @@
     row.append(sw, name, del); wrap.append(row, pal); sync();
     return wrap;
   }
-  function openSettings() {
+  function fillSettings() {
     $('calName').value = S.calendar;
     $('catRows').innerHTML = '';
     S.cats.forEach(c => $('catRows').appendChild(catRow(c)));
-    show('settings');
+    $('setMsg').textContent = '';
+    settingsDirty = false;
   }
-  $('gear').onclick = openSettings;
-  $('back').onclick = () => show('timer');
+  $('settings').addEventListener('input', () => { settingsDirty = true; });
+  $('settings').addEventListener('click', e => { if (e.target.closest('.palette button, .x, #addCat')) settingsDirty = true; });
+  $('back').onclick = () => { fillSettings(); say('Changes discarded'); };
   $('addCat').onclick = () => { const r = catRow({ name: '', color: 'GRAY' }); $('catRows').appendChild(r); r.querySelector('input').focus(); };
   $('save').onclick = () => {
     const cats = [...$('catRows').children].map(r => ({ name: r.querySelector('input').value, color: r.dataset.color }));
     $('save').disabled = true; $('save').textContent = 'Saving…';
     server('saveSettings', [{ calendar: $('calName').value, cats }])
-      .then(init => { S = init.settings; hist = []; renderCats(); show('timer'); renderTimer(); say('Settings saved'); })
+      .then(init => { S = init.settings; hist = []; renderCats(); renderTimer(); fillSettings(); say('Settings saved'); })
       .catch(e => { $('setMsg').textContent = "Couldn't save settings: " + e.message; })
       .finally(() => { $('save').disabled = false; $('save').textContent = 'Save settings'; });
   };
 
   // ---------- boot ----------
   server('getInit')
-    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; selected = running ? running.cat : null; renderCats(); renderTimer(); loadToday(); })
+    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; selected = running ? running.cat : null; renderCats(); renderTimer(); loadToday(); fillSettings(); })
     .catch(e => { $('what').textContent = "Couldn't load"; $('sub').textContent = e.message; });
 </script>
 </body>
