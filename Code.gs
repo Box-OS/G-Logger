@@ -66,8 +66,8 @@ function runningEvent_(s) {
 // Starts a timer. If one is already running it's stopped first, so tapping another category switches.
 // startMs is the moment the phone started counting, so the server's clock matches what's on screen.
 function start(catName, title, startMs) {
-  if (readJSON('running')) stop();
-  props().deleteProperty('lastStopped');   // switching tasks isn't something to undo
+  if (readJSON('running')) throw new Error('A log is already running. Stop it first.');
+  props().deleteProperty('lastStopped');
   const st = getSettings();
   const cat = st.cats.find(c => c.name === catName);
   if (!cat) throw new Error('Unknown category: ' + catName);

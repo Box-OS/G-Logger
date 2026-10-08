@@ -293,6 +293,8 @@
     background:var(--cc, #888); box-shadow:0 0 8px color-mix(in srgb, var(--cc, #888) 70%, transparent);
   }
   #catHL.show { opacity:1; }
+  #catWrap { transition:opacity .3s ease, filter .3s ease; }
+  #catWrap.locked { opacity:.55; filter:saturate(.6); }
   :root[data-sport] #catHL { display:none; }
   /* icon picker in settings */
   .iconbtn { width:50px; height:50px; flex:none; border-radius:50%; background:var(--surface); border:1px solid var(--line); display:grid; place-items:center; color:var(--ink); }
@@ -695,7 +697,7 @@
       b.style.visibility = ax > arc.W / 2 + ITEM ? 'hidden' : '';
       if (ax < bd) { bd = ax; best = b; }
     });
-    if (best && best.dataset.name !== selected && !holding) { selected = best.dataset.name; renderTimer(); haptic(6); }
+    if (best && best.dataset.name !== selected && !holding && !running) { selected = best.dataset.name; renderTimer(); haptic(6); }
   }
   const wClamp = v => { const min = -(wItems().length - 1) * ITEM; return v > 0 ? v * .35 : v < min ? min + (v - min) * .35 : v; };
   function wheelTo(idx, ms) {
@@ -720,6 +722,7 @@
     },
     end() {
       if (sport) return;
+      if (running) { lockedNudge(); centerSelectedCat(true); return; }
       const a = wSamples[0], z = wSamples[wSamples.length - 1];
       const v = a && z && z[0] > a[0] ? (z[1] - a[1]) / (z[0] - a[0]) : 0;    // px per ms
       const target = wOff + v * 200;                                            // fling a little further
@@ -753,7 +756,7 @@
         }
         if (Math.abs(o) < bestD) { bestD = Math.abs(o); best = b; }
       });
-      if (best && best.dataset.name !== selected && !holding) {   // whatever sits in the middle is selected
+      if (best && best.dataset.name !== selected && !holding && !running) {   // whatever sits in the middle is selected
         selected = best.dataset.name; renderTimer();
         haptic(6);
       }
@@ -769,7 +772,17 @@
     const cats = $('cats'), b = [...cats.querySelectorAll('.cat')].find(x => x.dataset.name === selected);
     if (b) cats.scrollTo({ left: b.offsetLeft + b.offsetWidth / 2 - cats.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
   }
-  $('cats').addEventListener('scroll', () => { if (sport) curveCats(); }, { passive: true });
+  let lockT = 0;
+  $('cats').addEventListener('scroll', () => {
+    if (!sport) return;
+    curveCats();
+    if (running) { clearTimeout(lockT); lockT = setTimeout(() => { lockedNudge(); centerSelectedCat(true); }, 160); }   // spring back
+  }, { passive: true });
+  let lockMsgT = -1e9;
+  function lockedNudge() {
+    haptic([8, 30, 8]);
+    if (performance.now() - lockMsgT > 1500) { lockMsgT = performance.now(); say(`Stop ${running.cat} first`); }
+  }
 
   // ---------- screens (swipe between them) ----------
   const PAGES = ['timer', 'timeline', 'history', 'settings'];
@@ -829,7 +842,11 @@
       b.innerHTML = `<span class="ico">${svgIcon(iconOf(c))}</span><span class="lbl"></span>`;
       b.lastChild.textContent = c.name;
       b.dataset.name = c.name;
-      b.onclick = () => { if (selected !== c.name) { selected = c.name; renderTimer(); haptic(6); } centerSelectedCat(true); };
+      b.onclick = () => {
+        if (running && c.name !== running.cat) { lockedNudge(); return; }
+        if (selected !== c.name) { selected = c.name; renderTimer(); haptic(6); }
+        centerSelectedCat(true);
+      };
       $('cats').appendChild(b);
     });
     requestAnimationFrame(fitLabels);
@@ -838,14 +855,15 @@
 
   function holdAction() {
     if (!running) return selected ? 'start' : null;
-    if (selected && selected !== running.cat) return 'switch';
-    return 'stop';
+    return 'stop';   // one log at a time: stop it before starting another
   }
   function setRing(p) { (overlayAnim ? ['ring'] : ['ring', 'fring']).forEach(id => { const r = $(id); r.setAttribute('stroke-dasharray', `${(p * 100).toFixed(2)} 100`); r.style.opacity = p > 0.005 ? 1 : 0; }); }
 
   function renderTimer() {
     clearInterval(tick);
     if (selected && !catByName(selected)) selected = null;
+    if (running) selected = running.cat;   // the picker is locked to what's running
+    $('catWrap').classList.toggle('locked', !!running);
     document.querySelectorAll('.cat').forEach(b => b.classList.toggle('active', b.dataset.name === selected));
     placeCatHighlight();
     const dial = $('dial'), act = holdAction();
