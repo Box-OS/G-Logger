@@ -615,6 +615,7 @@
     holding = true; holdAct = act; holdT0 = performance.now(); activeDial().classList.add('holding');
     const step = now => {
       const p = Math.min(1, (now - holdT0) / HOLD_MS);
+      if (act !== 'stop') setRing(p);   // the ring fills while you hold to start
       shakeDial(p);
       if (p >= 1) { holdEnd(true); return; }
       raf = requestAnimationFrame(step);
