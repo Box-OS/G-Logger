@@ -173,7 +173,10 @@
   #focus.mini #liquid svg { display:none; }
   body.minimized header { padding-left:70px; }
   body.focusing #dial { z-index:21; box-shadow:0 30px 80px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.12); }
-  #resume { display:block; margin:16px auto 0; height:42px; padding:0 18px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:14px; font-weight:600; }
+  #resume { display:flex; align-items:center; gap:10px; margin:16px auto 0; height:44px; padding:0 18px 0 16px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:14px; font-weight:600; }
+  #resume .rdot { width:9px; height:9px; border-radius:50%; background:var(--cc); animation:blink 1.6s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity:.3; } }
+  #resume b { font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; }
   #msg button { margin-left:12px; padding:0; color:var(--ink); font-weight:700; text-decoration:underline; text-underline-offset:3px; }
   #fmeta { font-size:15px; opacity:.75; margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #fhint { font-size:13px; opacity:.6; margin-bottom:12px; }
@@ -408,7 +411,7 @@
   // ---------- timer ----------
   let selected = null;
   const HOLD_MS = 3000;
-  let lastStopped = null, overlayAnim = false;
+  let lastStopped = null, overlayAnim = false, resumeTick = 0;
 
   function renderCats() {
     $('cats').innerHTML = '';
@@ -452,7 +455,18 @@
       : act === 'stop' ? (focusOpen() ? 'Hold 3s to stop' : 'Hold to stop · tap to focus') : 'then hold here';
     const canResume = !running && lastStopped && Date.now() - lastStopped.end < 30 * 60000;
     $('resume').classList.toggle('hidden', !canResume);
-    if (canResume) $('resume').textContent = `↺  Resume ${lastStopped.cat} · stopped ${fmtTime(lastStopped.end)}`;
+    clearInterval(resumeTick);
+    if (canResume) {
+      const r = $('resume');
+      r.innerHTML = '<span class="rdot"></span><span></span><b></b>';
+      paint(r, lastStopped.color);
+      r.children[1].textContent = 'Continue ' + lastStopped.cat;
+      const upd = () => {
+        if (!lastStopped || Date.now() - lastStopped.end > 30 * 60000) { renderTimer(); return; }
+        r.lastChild.textContent = fmt(Date.now() - lastStopped.start);   // the session's clock never stopped
+      };
+      upd(); resumeTick = setInterval(upd, 1000);
+    }
     if (running) {
       const upd = () => { $('clock').textContent = fmt(Date.now() - running.start); $('later').disabled = Date.now() - running.start < 60000; };
       $('fcat').textContent = running.cat;
