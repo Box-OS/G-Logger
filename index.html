@@ -174,6 +174,7 @@
   body.minimized header { padding-left:70px; }
   #fdial { position:absolute; margin:0; z-index:3; box-shadow:0 30px 80px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.12); }
   #focus.mini #fdial { display:none; }
+  #filings { position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; display:none; }
   .fcontent { pointer-events:none; }
   .fcontent button { pointer-events:auto; }
   #resume { display:flex; align-items:center; gap:10px; margin:16px auto 0; height:44px; padding:0 18px 0 16px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:14px; font-weight:600; }
@@ -341,6 +342,7 @@
       <div id="fhint">Hold the circle for 3 seconds to stop</div>
       <h2 id="fcat"></h2>
     </div>
+    <canvas id="filings"></canvas>
     <button id="fdial" class="dial" aria-label="Hold for 3 seconds to stop">
       <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="46" fill="none" stroke-width="2.4"/><circle class="ring" id="fring" cx="50" cy="50" r="46" fill="none" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="100 100"/></svg>
       <span class="face">
@@ -680,21 +682,60 @@
     g.cur = rad;
     $('liquid').style.clipPath = `circle(${Math.max(0, rad).toFixed(1)}px at ${(jx || g.cx).toFixed(1)}px ${(jy || g.cy).toFixed(1)}px)`;
   }
-  // Most of the suction happens after the ring is empty: a fast, accelerating pull with a slight tremble.
+  // Once the ring is empty the liquid breaks into iron filings. They line up along a bar
+  // magnet's field (poles inside the circle) and get pulled in along those curved lines,
+  // slowly at first, then faster and faster.
   function vacuum(done, g) {
     g = g || suckGeometry();
-    const R0 = g.cur || g.R, MS = 520, L = $('liquid');
-    F.classList.add('sucking');
-    setLevel(0);
-    const t0 = performance.now();
+    const L = $('liquid'), cv = $('filings'), ctx = cv.getContext('2d');
+    const W = innerWidth, H = innerHeight, dpr = Math.min(2, devicePixelRatio || 1);
+    cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const fd = $('fdial').getBoundingClientRect(), cx = fd.left + fd.width / 2, cy = fd.top + fd.height / 2, rad = fd.width / 2;
+    const color = hex(running ? running.color : (lastStopped ? lastStopped.color : 'GRAY'));
+    const reach = g.cur || g.R, A = rad * .55;          // pole offset from the centre
+    const field = (x, y) => {                          // + pole on the right, − pole on the left
+      const dx1 = x - (cx + A), dy = y - cy, dx2 = x - (cx - A);
+      const r1 = Math.pow(dx1 * dx1 + dy * dy, 1.5) || 1, r2 = Math.pow(dx2 * dx2 + dy * dy, 1.5) || 1;
+      return { x: dx1 / r1 - dx2 / r2, y: dy / r1 - dy / r2 };
+    };
+    const parts = [];
+    for (let i = 0; i < 4200 && parts.length < 1500; i++) {   // denser near the circle, sparse far away
+      const x = Math.random() * W, y = Math.random() * H, d = Math.hypot(x - cx, y - cy);
+      if (d < rad * 1.03 || d > reach) continue;
+      if (Math.random() > .12 + Math.pow(rad * 1.5 / d, 1.6)) continue;
+      parts.push({ x, y, w: .8 + Math.random() * 1.2, len: 4 + Math.random() * 5, a: .55 + Math.random() * .4, alive: true });
+    }
+    const T = 780;
+    F.classList.add('sucking'); setLevel(0);
+    L.style.clipPath = ''; L.style.transition = 'opacity .14s ease'; L.style.opacity = '0';
+    cv.style.display = 'block';
+    ctx.strokeStyle = color; ctx.lineCap = 'round';
+    const t0 = performance.now(); let last = t0;
     const step = now => {
-      const p = Math.min(1, (now - t0) / MS);
-      const e = Math.pow(p, 2.8);
-      const jit = (1 - p) * (p > .04 ? 1 : 0);
-      suckTo(R0 * (1 - e) + (Math.random() - .5) * 6 * jit, g, g.cx + (Math.random() - .5) * jit, g.cy + (Math.random() - .5) * jit);
-      shakeDial(1, .25 + .6 * e);   // swells a little more as it swallows the liquid
-      if (p < 1) { requestAnimationFrame(step); return; }
-      F.classList.remove('sucking'); L.style.clipPath = '';
+      const t = now - t0, dt = Math.min(32, now - last) / 1000; last = now;
+      const ramp = 3.2 * Math.pow(Math.min(1, t / T), 2);   // pull strength grows: the vacuum
+      ctx.clearRect(0, 0, W, H);
+      let left = 0;
+      for (const q of parts) {
+        if (!q.alive) continue;
+        const E = field(q.x, q.y), n = Math.hypot(E.x, E.y) || 1;
+        const sgn = q.x >= cx ? -1 : 1;                   // follow the line toward the nearest pole
+        const ux = sgn * E.x / n, uy = sgn * E.y / n;
+        const d = Math.hypot(q.x - cx, q.y - cy);
+        const v = ramp * (d * 3.2 + 260 * Math.min(1, rad * rad / (d * d)));
+        q.x += ux * v * dt; q.y += uy * v * dt;
+        if (Math.hypot(q.x - cx, q.y - cy) < rad * .98) { q.alive = false; continue; }
+        left++;
+        const len = q.len + Math.min(30, v * .025);
+        ctx.globalAlpha = t > T ? q.a * Math.max(0, 1 - (t - T) / 120) : q.a;
+        ctx.lineWidth = q.w;
+        ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(q.x - ux * len, q.y - uy * len); ctx.stroke();
+      }
+      shakeDial(1, .2 + .45 * Math.min(1, t / T));   // the circle swells a little as it pulls everything in
+      if (left && t < T + 120) { requestAnimationFrame(step); return; }
+      ctx.clearRect(0, 0, W, H); cv.style.display = 'none';
+      L.style.transition = ''; L.style.opacity = '';
+      F.classList.remove('sucking');
       $('dial').style.setProperty('--s0', dialScale.toFixed(3));
       $('fdial').style.transform = ''; $('fdial').style.transition = '';
       done();
