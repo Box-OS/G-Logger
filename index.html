@@ -1223,15 +1223,35 @@
     return new Date(ms).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
   }
 
+  // Show the last copy instantly (kept on the phone), then quietly refresh from Calendar.
+  const CACHE = 'glog-hist1';
+  let histShown = '', histLoading = false;
+  try {
+    const c = JSON.parse(localStorage.getItem(CACHE) || 'null');
+    if (c && Array.isArray(c.list)) { const from = dayStart(Date.now() - (histDays - 1) * 864e5); hist = c.list.filter(x => x.end >= from); }
+  } catch (e) {}
+  const saveHist = () => { try { localStorage.setItem(CACHE, JSON.stringify({ at: Date.now(), list: hist })); } catch (e) {} };
+  function showHistory() {   // redraw only if something actually changed (no flicker, keeps your place)
+    const key = histDays + JSON.stringify(hist);
+    if (key === histShown) return;
+    histShown = key; renderHistory();
+  }
   function loadHistory() {
-    if (!hist.length) $('histList').innerHTML = '<p class="empty">Loading your log…</p>';
+    if (hist.length) showHistory();
+    else if (!histShown) $('histList').innerHTML = '<p class="empty">Loading your log…</p>';
+    if (histLoading === histDays) return; histLoading = histDays; const want = histDays;
     const from = dayStart(Date.now() - (histDays - 1) * 864e5);
     server('history', [from, Date.now() + 60000])
-      .then(list => { hist = list.filter(x => !pendingDel || x.id !== pendingDel.e.id); renderHistory(); })
-      .catch(e => { $('histList').innerHTML = ''; say("Couldn't load history: " + e.message); });
+      .then(list => {
+        hist = list.filter(x => !pendingDel || x.id !== pendingDel.e.id); saveHist(); showHistory();
+        const d0 = dayStart(Date.now()); today = hist.filter(x => x.end > d0); if (view === 'timeline') renderToday();
+      })
+      .catch(e => { if (!hist.length) $('histList').innerHTML = ''; if (view === 'history') say("Couldn't load history: " + e.message); })
+      .finally(() => { if (histLoading === want) histLoading = false; });
   }
 
   function renderHistory() {
+    histShown = histDays + JSON.stringify(hist); saveHist();
     const box = $('histList'); box.innerHTML = '';
     $('more').classList.remove('hidden');
     if (!hist.length) {
@@ -1361,7 +1381,7 @@
     const entry = { id: editing && editing.id, cat: sheetCat, title: $('sheetText').value.trim(), start, end };
     $('sheetSave').disabled = true; $('sheetSave').textContent = 'Saving…';
     server('saveEntry', [entry])
-      .then(() => { closeSheet(); say(entry.id ? 'Entry updated' : 'Entry added'); hist = []; if (view === 'history') loadHistory(); loadToday(); })
+      .then(() => { closeSheet(); say(entry.id ? 'Entry updated' : 'Entry added'); loadHistory(); loadToday(); })
       .catch(e => { $('sheetErr').textContent = "Couldn't save: " + e.message; })
       .finally(() => { $('sheetSave').disabled = false; $('sheetSave').textContent = 'Save'; });
   };
@@ -1499,8 +1519,14 @@
   const timeAtY = cy => vStart + (cy - $('tl').getBoundingClientRect().top - PAD) / lineLen() * vSpan;
 
   function loadToday() {
+    if (!today.length && hist.length) { const d0 = dayStart(Date.now()); today = hist.filter(x => x.end > d0); }
     server('history', [dayStart(Date.now()), Date.now() + 60000])
-      .then(list => { today = list.filter(x => !pendingDel || x.id !== pendingDel.e.id); renderToday(); })
+      .then(list => {
+        today = list.filter(x => !pendingDel || x.id !== pendingDel.e.id); renderToday();
+        const d0 = dayStart(Date.now());   // keep History's copy of today in step too
+        hist = today.concat(hist.filter(x => x.end <= d0 && !today.some(t => t.id === x.id))).sort((a, b) => b.start - a.start);
+        if (view === 'history') showHistory(); else saveHist();
+      })
       .catch(() => {});
   }
 
@@ -1690,14 +1716,14 @@
     const cats = [...$('catRows').children].map(r => ({ name: r.querySelector('input').value, color: r.dataset.color, icon: r.dataset.icon }));
     $('save').disabled = true; $('save').textContent = 'Saving…';
     server('saveSettings', [{ calendar: $('calName').value, cats }])
-      .then(init => { S = init.settings; hist = []; renderCats(); renderTimer(); fillSettings(); centerSelectedCat(false); say('Settings saved'); })
+      .then(init => { S = init.settings; histShown = ''; renderCats(); renderTimer(); fillSettings(); centerSelectedCat(false); say('Settings saved'); })
       .catch(e => { $('setMsg').textContent = "Couldn't save settings: " + e.message; })
       .finally(() => { $('save').disabled = false; $('save').textContent = 'Save settings'; });
   };
 
   // ---------- boot ----------
   server('getInit')
-    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; lastStopped = init.lastStopped || null; selected = running ? running.cat : (init.settings.cats[0] || {}).name || null; renderCats(); renderTimer(); loadToday(); fillSettings(); applySport(); })
+    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; lastStopped = init.lastStopped || null; selected = running ? running.cat : (init.settings.cats[0] || {}).name || null; renderCats(); renderTimer(); loadToday(); fillSettings(); applySport(); loadHistory(); })
     .catch(e => { $('what').textContent = "Couldn't load"; $('sub').textContent = e.message; });
 </script>
 </body>
