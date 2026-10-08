@@ -234,6 +234,7 @@
                 mask-image:linear-gradient(transparent, #000 18px, #000 calc(100% - 18px), transparent); }
   #tl.drag { cursor:grabbing; }
   #tl .blob { transition:transform .15s ease; }
+  #tl .axis, #tl .tick, #tl .hr, #tl .now, #tl .nowlbl { pointer-events:none; }   /* drags land on the timeline itself */
   #tl .axis { position:absolute; left:50%; top:0; bottom:0; width:3px; margin-left:-1.5px; border-radius:2px; background:color-mix(in srgb, var(--ink) 10%, transparent); }
   #tl .tick { position:absolute; left:50%; width:10px; height:1px; margin-left:-5px; background:color-mix(in srgb, var(--ink) 22%, transparent); }
   #tl .tick.major { width:18px; height:2px; margin:-.5px 0 0 -9px; background:color-mix(in srgb, var(--ink) 30%, transparent); }
@@ -1543,8 +1544,18 @@
     clampView();
     const scale = L / vSpan * HOUR, from = vStart - PAD / scale * HOUR, to = vStart + vSpan + PAD / scale * HOUR;
     const y = ms => PAD + (ms - vStart) / vSpan * L;
-    tl.innerHTML = '';
-    const add = (cls, css, html) => { const el = document.createElement('div'); el.className = cls; Object.assign(el.style, css); if (html) el.textContent = html; tl.appendChild(el); return el; };
+    // Reuse the same elements every frame instead of rebuilding them, so the one under your
+    // finger never disappears mid-drag (iOS stops the gesture when it does).
+    const used = {};
+    const take = (tag, kind) => {
+      const p = tlPool[kind] || (tlPool[kind] = []), i = used[kind] = (used[kind] || 0);
+      used[kind]++;
+      let el = p[i];
+      if (!el) { el = document.createElement(tag); p.push(el); tl.appendChild(el); }
+      el.style.cssText = ''; return el;
+    };
+    const add = (cls, css, html) => { const el = take('div', cls.split(' ')[0]); el.className = cls; Object.assign(el.style, css); el.textContent = html || ''; return el; };
+    const oldPeek = $('peek'); if (oldPeek) oldPeek.remove();
     add('axis', {});
     // The more you zoom in, the finer the marks: hours → 30 → 15 → 10 → 5 minutes.
     const ppm = scale / 60, STEPS = [5, 10, 15, 30, 60, 120, 180];
@@ -1564,12 +1575,11 @@
     items.sort((a, b) => a.start - b.start).forEach(e => {
       const top = y(e.start), h = Math.max(24, (e.end - e.start) / HOUR * scale);
       if (top > TH || top + h < 0) return;   // outside the window
-      const b = document.createElement('button');
+      const b = take('button', 'blob');
       b.className = 'blob' + (e.live ? ' live' : ''); paint(b, e.color);
       Object.assign(b.style, { top: top + 'px', height: h + 'px' });
       b.setAttribute('aria-label', `${e.cat}, ${fmtTime(e.start)} to ${e.live ? 'now' : fmtTime(e.end)}`);
       b.onclick = ev => { ev.stopPropagation(); peekId = peekId === e.id ? null : e.id; renderToday(); };
-      tl.appendChild(b);
       const mid = (Math.max(top, PAD) + Math.min(top + h, TH - PAD)) / 2;   // label the visible part
       if (mid - lastLabel >= 22) {
         const lb = add('blabel', { top: mid + 'px' }, e.cat); lastLabel = mid;
@@ -1591,7 +1601,9 @@
         tl.appendChild(p);
       }
     });
+    for (const k in tlPool) tlPool[k].forEach((el, i) => { if (i >= (used[k] || 0)) el.style.display = 'none'; });
   }
+  const tlPool = {};
   document.addEventListener('click', () => { if (peekId) { peekId = null; renderToday(); } });
   setInterval(() => { if (running && view === 'timeline') renderToday(); }, 30000);
 
@@ -1632,7 +1644,7 @@
       e.preventDefault(); zoomAt(g.span * g.d / gap(t), g.at, mid(t)); return;
     }
     const dx = t[0].clientX - g.x, dy = t[0].clientY - g.y;
-    if (!g.lock && Math.hypot(dx, dy) > 6) g.lock = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x';
+    if (!g.lock) { if (!dx && !dy) return; g.lock = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'x' : 'y'; }
     if (g.lock !== 'y') return;   // sideways swipes still change pages
     e.preventDefault(); TL.classList.add('drag');
     const k = vSpan / lineLen(), now = performance.now(), dt = Math.max(1, now - g.lt);
