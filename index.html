@@ -214,7 +214,7 @@
   .thead h2 span { margin-left:6px; font-size:15px; font-weight:500; color:var(--muted); font-variant-numeric:tabular-nums; }
   .zoom { display:flex; gap:6px; }
   .zoom button { width:34px; height:34px; border-radius:50%; background:var(--surface); border:1px solid var(--line); color:var(--muted); font-size:18px; line-height:1; }
-  #tl { position:relative; touch-action:pan-x pan-y; }
+  #tl { position:relative; }
   /* centred timeline: times on the left, sessions on the line, names on the right */
   .tsum { text-align:center; margin:2px 0 22px; }
   #todayDate { font-size:14px; font-weight:600; color:var(--muted); }
@@ -223,6 +223,7 @@
   #today .zoom { position:sticky; top:8px; z-index:4; float:right; margin:-6px 0 0; padding:4px; gap:4px; border-radius:999px; background:color-mix(in srgb, var(--surface) 80%, transparent); border:1px solid var(--line); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); box-shadow:0 6px 18px rgba(10,11,13,.08); }
   #today .zoom button { width:36px; height:36px; border:0; background:transparent; color:var(--ink); font-size:20px; }
   #tl { clear:both; }
+  #timeline { touch-action:pan-x pan-y; }
   #tl .axis { position:absolute; left:50%; top:0; bottom:0; width:3px; margin-left:-1.5px; border-radius:2px; background:color-mix(in srgb, var(--ink) 10%, transparent); }
   #tl .tick { position:absolute; left:50%; width:10px; height:1px; margin-left:-5px; background:color-mix(in srgb, var(--ink) 22%, transparent); }
   #tl .tick.major { width:18px; height:2px; margin:-.5px 0 0 -9px; background:color-mix(in srgb, var(--ink) 30%, transparent); }
@@ -383,7 +384,6 @@
         <div id="todayTotal">0m</div>
         <div class="tsub">logged today</div>
       </div>
-      <div class="zoom"><button id="zoomOut" aria-label="Zoom out">−</button><button id="zoomIn" aria-label="Zoom in">+</button></div>
       <div id="tl"></div>
     </div>
   </section>
@@ -1351,16 +1351,22 @@
   let today = [], scale = 72, peekId = null, tlFrom = 0;
   try { const v = Number(localStorage.getItem('glog-scale2')); if (v >= SMIN && v <= SMAX) scale = v; } catch (e) {}
   // Zoom around the middle of the screen so the time you're looking at stays put.
-  function setScale(v) {
-    const pg = $('timeline'), tl = $('tl'), mid = pg.scrollTop + pg.clientHeight / 2 - tl.offsetTop;
-    const at = tlFrom + (mid - 14) / scale * 3600e3;
-    scale = Math.max(SMIN, Math.min(SMAX, v));
-    try { localStorage.setItem('glog-scale2', String(Math.round(scale))); } catch (e) {}
-    renderToday();
-    if (tlFrom) pg.scrollTop = 14 + (at - tlFrom) / 3600e3 * scale + tl.offsetTop - pg.clientHeight / 2;
+  // Zoom keeps the time under your fingers (or the screen's middle) where it is.
+  let zoomRaf = 0, zoomWant = null;
+  function setScale(v, anchorY) {
+    zoomWant = { v, anchorY };
+    if (zoomRaf) return;
+    zoomRaf = requestAnimationFrame(() => {   // at most one redraw per frame while pinching
+      zoomRaf = 0;
+      const { v, anchorY } = zoomWant, pg = $('timeline'), tl = $('tl');
+      const top = pg.getBoundingClientRect().top, off = anchorY == null ? pg.clientHeight / 2 : anchorY - top;
+      const at = tlFrom + (pg.scrollTop + off - tl.offsetTop - 14) / scale * 3600e3;
+      scale = Math.max(SMIN, Math.min(SMAX, v));
+      renderToday();
+      if (tlFrom) pg.scrollTop = 14 + (at - tlFrom) / 3600e3 * scale + tl.offsetTop - off;
+      clearTimeout(setScale.t); setScale.t = setTimeout(() => { try { localStorage.setItem('glog-scale2', String(Math.round(scale))); } catch (e) {} }, 400);
+    });
   }
-  $('zoomIn').onclick = () => setScale(SCALES.find(x => x > scale + 1) || SMAX);
-  $('zoomOut').onclick = () => setScale([...SCALES].reverse().find(x => x < scale - 1) || SMIN);
 
   function loadToday() {
     server('history', [dayStart(Date.now()), Date.now() + 60000])
@@ -1427,24 +1433,28 @@
         tl.appendChild(p);
       }
     });
-    if (!items.length) add('hr', { top: '0px', left: '84px', width: 'auto', textAlign: 'left', transform: 'none', fontSize: '14px' }, 'Nothing logged yet today.');
   }
   document.addEventListener('click', () => { if (peekId) { peekId = null; renderToday(); } });
   setInterval(() => { if (running && view === 'timeline') renderToday(); }, 30000);
 
-  // pinch to zoom
+  // Pinch anywhere on the Today screen to zoom smoothly (vertical spread between the fingers sets the scale).
+  const TLP = $('timeline');
   let pinch = null;
-  $('tl').addEventListener('touchstart', e => {
-    if (e.touches.length === 2) pinch = { d: Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY), s: scale };
+  const span = t => Math.max(30, Math.abs(t[0].clientY - t[1].clientY));
+  TLP.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) pinch = { d: span(e.touches), s: scale };
   }, { passive: true });
-  $('tl').addEventListener('touchmove', e => {
+  TLP.addEventListener('touchmove', e => {
     if (!pinch || e.touches.length !== 2) return;
     e.preventDefault();
-    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    setScale(pinch.s * d / pinch.d);
+    setScale(pinch.s * span(e.touches) / pinch.d, (e.touches[0].clientY + e.touches[1].clientY) / 2);
   }, { passive: false });
-  $('tl').addEventListener('touchend', () => { pinch = null; });
-  $('tl').addEventListener('wheel', e => { if (e.ctrlKey) { e.preventDefault(); setScale(scale * (e.deltaY < 0 ? 1.1 : 0.9)); } }, { passive: false });
+  TLP.addEventListener('touchend', e => { if (e.touches.length < 2) pinch = null; });
+  ['gesturestart', 'gesturechange'].forEach(ev => TLP.addEventListener(ev, e => e.preventDefault()));   // stop iPhone zooming the whole page
+  TLP.addEventListener('wheel', e => {   // trackpad pinch on a laptop
+    if (!e.ctrlKey) return;
+    e.preventDefault(); setScale(scale * Math.exp(-e.deltaY * .01), e.clientY);
+  }, { passive: false });
 
   // ---------- settings ----------
   function catRow(c) {
