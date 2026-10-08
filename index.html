@@ -944,10 +944,11 @@
   // empty the pull keeps growing until every filing has been drawn into the circle.
   let mag = null;
   function startMagnet() {
-    const L = $('liquid'), cv = $('filings'), ctx = cv.getContext('2d');
+    const L = $('liquid'), FC = F.querySelector('.fcontent'), cv = $('filings'), ctx = cv.getContext('2d');
     const W = innerWidth, H = innerHeight, dpr = Math.min(2, devicePixelRatio || 1);
     cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const fd = $('fdial').getBoundingClientRect(), cx = fd.left + fd.width / 2, cy = fd.top + fd.height / 2, rad = fd.width / 2;
+    const R = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) + 4;
     const color = hex(running ? running.color : 'GRAY'), A = rad * .55;
     const field = (x, y) => {                          // + pole on the right, − pole on the left
       const dx1 = x - (cx + A), dy = y - cy, dx2 = x - (cx - A);
@@ -959,31 +960,37 @@
       const x = Math.random() * W, y = Math.random() * H, d = Math.hypot(x - cx, y - cy);
       if (d < rad * 1.03) continue;
       if (Math.random() > .14 + Math.pow(rad * 1.5 / d, 1.5)) continue;
-      parts.push({ x, y, x0: x, y0: y, w: .8 + Math.random() * 1.2, len: 4 + Math.random() * 5, a: .55 + Math.random() * .4, alive: true });
+      parts.push({ x, y, w: .8 + Math.random() * 1.2, len: 4 + Math.random() * 5, a: .6 + Math.random() * .35, alive: true });
     }
+    // The liquid's edge recedes toward the circle; whatever it uncovers is already filings.
+    // No fading anywhere: the edge itself is the transition.
+    const setEdge = r => {
+      const c = `circle(${Math.max(0, r).toFixed(1)}px at ${cx.toFixed(1)}px ${cy.toFixed(1)}px)`;
+      L.style.clipPath = c; FC.style.clipPath = c;
+    };
     cv.style.display = 'block'; ctx.strokeStyle = color; ctx.lineCap = 'round';
-    const st = { phase: 'hold', p: 0, fade: 1, t0: 0, done: null };
-    let last = performance.now(), raf2 = 0;
+    const st = { phase: 'hold', p: 0, edge: R, t0: 0, from: R, done: null };
+    let last = performance.now();
     const frame = now => {
       const dt = Math.min(32, now - last) / 1000; last = now;
-      let pull, show, liquid;
+      let pull;
       if (st.phase === 'hold') {
-        pull = .12 * st.p * st.p;                      // a gentle drift while you hold
-        show = Math.min(1, st.p * 1.4);                // filings appear as the liquid thins out
-        liquid = 1 - Math.pow(st.p, 1.2);
+        const e = 1 - Math.pow(1 - st.p, 1.6);         // the edge moves steadily, a touch faster at first
+        st.edge = R - (R - rad * 1.08) * e;
+        pull = .07 * st.p * st.p;                      // uncovered filings start drifting along the field
       } else if (st.phase === 'pull') {
         const t = Math.min(1, (now - st.t0) / 700);
-        pull = .12 + 3.2 * t * t;                      // then a strong, growing pull
-        show = 1; liquid = 0;
-      } else {                                         // cancelled
-        st.fade = Math.max(0, st.fade - dt / .28);
-        pull = 0; show = st.fade; liquid = 1 - st.fade * (1 - st.liq);
+        st.edge = Math.max(rad * .98, st.from - (st.from - rad * .98) * Math.min(1, (now - st.t0) / 160));
+        pull = .07 + 3.2 * t * t;                      // then a strong, growing pull
+      } else {                                         // cancelled: the liquid flows back out over the filings
+        const t = Math.min(1, (now - st.t0) / 320), e = 1 - Math.pow(1 - t, 3);
+        st.edge = st.from + (R - st.from) * e;
+        pull = 0;
       }
-      if (st.phase !== 'cancel') st.liq = liquid;
-      L.style.opacity = liquid.toFixed(3);
-      F.style.setProperty('--fade', Math.max(0, 1 - show * 1.2).toFixed(3));
+      setEdge(st.edge);
       ctx.clearRect(0, 0, W, H);
       let left = 0;
+      ctx.lineWidth = 1.4;
       for (const q of parts) {
         if (!q.alive) continue;
         const E = field(q.x, q.y), n = Math.hypot(E.x, E.y) || 1;
@@ -992,31 +999,33 @@
         const d = Math.hypot(q.x - cx, q.y - cy);
         const v = pull * (d * 3.2 + 260 * Math.min(1, rad * rad / (d * d)));
         q.x += ux * v * dt; q.y += uy * v * dt;
-        if (Math.hypot(q.x - cx, q.y - cy) < rad * .98) { q.alive = false; continue; }
+        const d2 = Math.hypot(q.x - cx, q.y - cy);
+        if (d2 < rad * .98) { q.alive = false; continue; }
         left++;
+        if (d2 < st.edge) continue;                    // still under the liquid
         const len = q.len + Math.min(30, v * .025);
-        ctx.globalAlpha = q.a * show;
-        ctx.lineWidth = q.w;
+        ctx.globalAlpha = q.a; ctx.lineWidth = q.w;
         ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(q.x - ux * len, q.y - uy * len); ctx.stroke();
       }
       if (st.phase === 'pull') shakeDial(1, .2 + .45 * Math.min(1, (now - st.t0) / 700));
-      const over = st.phase === 'pull' ? (!left || now - st.t0 > 820) : st.phase === 'cancel' ? st.fade <= 0 : false;
-      if (!over) { raf2 = requestAnimationFrame(frame); return; }
+      const over = st.phase === 'pull' ? (!left || now - st.t0 > 820) : st.phase === 'cancel' ? now - st.t0 > 330 : false;
+      if (!over) { requestAnimationFrame(frame); return; }
       ctx.clearRect(0, 0, W, H); cv.style.display = 'none';
-      L.style.opacity = ''; F.style.setProperty('--fade', 1);
+      L.style.clipPath = ''; FC.style.clipPath = '';
       if (st.phase === 'pull') {
         $('dial').style.setProperty('--s0', dialScale.toFixed(3));
         $('fdial').style.transform = ''; $('fdial').style.transition = '';
         st.done && st.done();
       }
     };
-    raf2 = requestAnimationFrame(frame);
+    requestAnimationFrame(frame);
     return {
       hold(p) { st.p = p; },
-      finish(done) { st.phase = 'pull'; st.t0 = performance.now(); st.done = done; },
-      cancel() { if (st.phase === 'hold') { st.phase = 'cancel'; st.fade = 1; } },
+      finish(done) { st.phase = 'pull'; st.t0 = performance.now(); st.from = st.edge; st.done = done; },
+      cancel() { if (st.phase === 'hold') { st.phase = 'cancel'; st.t0 = performance.now(); st.from = st.edge; } },
     };
   }
+
   [$('dial'), $('fdial')].forEach(dial => {
     dial.addEventListener('pointerdown', holdStart);
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => dial.addEventListener(ev, () => holdEnd(false)));
