@@ -1,4 +1,4 @@
-// Time Log: start/stop timer that writes events to a Google Calendar.
+// Gelogger: start/stop timer that writes events to a Google Calendar.
 // Categories and the target calendar are edited in the app (⚙), not here.
 
 const COLORS = { // Apps Script color id: [Google Calendar name, hex]
@@ -24,7 +24,7 @@ const label = (cat, title) => (title ? `${cat} · ${title}` : cat);
 
 function doGet() {
   return HtmlService.createHtmlOutputFromFile('index')
-    .setTitle('Time Log')
+    .setTitle('Gelogger')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 

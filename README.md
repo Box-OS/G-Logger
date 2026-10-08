@@ -1,10 +1,10 @@
-# G-Log — Google Calendar Time Logger
+# Gelogger — Google Calendar Time Logger
 
 A one-tap start/stop timer that logs how you spend your time directly to Google Calendar. Built as a Google Apps Script web app, so it runs on Google's servers with no backend, database, or hosting of its own, and works from any phone or laptop browser.
 
 ## Try it
 
-**[Open G-Log](https://script.google.com/macros/s/AKfycbxrJuZHOgyapJ5-xch7WRGy6MVgpkcG3ndafGpZyFknDFQ5Y07TQqJw8CCXciXdVmq2Og/exec)**. Any Google account works, and nothing to install.
+**[Open Gelogger](https://script.google.com/macros/s/AKfycbxrJuZHOgyapJ5-xch7WRGy6MVgpkcG3ndafGpZyFknDFQ5Y07TQqJw8CCXciXdVmq2Og/exec)**. Any Google account works, and nothing to install.
 
 1. Open the link and sign in with Google.
 2. Approve Calendar access. The app is not verified by Google yet, so you'll see a warning first: choose **Advanced → Go to … (unsafe)** to continue.
@@ -29,7 +29,7 @@ The app runs as *you*: it only ever touches your own calendar, and creates a cal
 - **History**: per-day totals, tap to edit, swipe left to delete (with undo), or add an entry you forgot to time.
 
 **Feel**
-- Swipeable Timer, Today, History and Settings screens.
+- Swipeable Log, Today, History and Settings screens.
 - Instant UI with background saves, haptics, light and dark mode, and an optional **Sport mode**.
 
 </details>
