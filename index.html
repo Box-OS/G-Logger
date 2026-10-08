@@ -112,6 +112,16 @@
     display:flex; align-items:center; gap:12px; width:100%; padding:13px 16px 13px 14px; margin-bottom:8px; text-align:left;
     background:var(--surface); border:1px solid var(--line); border-radius:20px;
   }
+  /* swipe left to delete */
+  .swipe { position:relative; margin-bottom:8px; border-radius:20px; overflow:hidden; transition:height .26s cubic-bezier(.4,0,.2,1), margin .26s ease, opacity .2s ease; }
+  .swipe .entry { position:relative; z-index:1; margin:0; touch-action:pan-y; transition:transform .38s cubic-bezier(.3,1.4,.5,1); }
+  .swipe.dragging .entry { transition:none; }
+  .swipe-bg { position:absolute; inset:0; display:flex; align-items:center; justify-content:flex-end; padding-right:24px; border-radius:20px; background:#E5484D; color:#fff; opacity:0; transition:opacity .15s ease; }
+  .swipe.dragging .swipe-bg, .swipe.gone .swipe-bg { opacity:1; }
+  .swipe-bg svg { width:24px; height:24px; transition:transform .25s cubic-bezier(.3,1.8,.5,1); }
+  .swipe.armed .swipe-bg svg { transform:scale(1.35); }
+  .swipe.gone .entry { transition:transform .22s cubic-bezier(.5,0,.75,0); transform:translateX(-110%) !important; }
+  :root[data-sport] .swipe, :root[data-sport] .swipe-bg { border-radius:14px; }
   .entry .stripe { width:4px; align-self:stretch; border-radius:2px; background:var(--cc); flex:none; }
   .entry .main { flex:1; min-width:0; }
   .entry .t1 { font-size:15px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -969,7 +979,7 @@
     if (!hist.length) $('histList').innerHTML = '<p class="empty">Loading your log…</p>';
     const from = dayStart(Date.now() - (histDays - 1) * 864e5);
     server('history', [from, Date.now() + 60000])
-      .then(list => { hist = list; renderHistory(); })
+      .then(list => { hist = list.filter(x => !pendingDel || x.id !== pendingDel.e.id); renderHistory(); })
       .catch(e => { $('histList').innerHTML = ''; say("Couldn't load history: " + e.message); });
   }
 
@@ -1002,13 +1012,69 @@
         if (e.title) { const em = document.createElement('em'); em.textContent = ' · ' + e.title; t1.appendChild(em); }
         b.querySelector('.t2').textContent = fmtTime(e.start) + ' – ' + fmtTime(e.end);
         b.querySelector('.dur').textContent = fmtDur(e.end - e.start);
-        b.onclick = () => openSheet(e);
-        sec.appendChild(b);
+        const wrap = document.createElement('div'); wrap.className = 'swipe';
+        wrap.innerHTML = '<div class="swipe-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/></svg></div>';
+        wrap.appendChild(b);
+        swipeToDelete(wrap, b, e);
+        b.onclick = () => { if (!wrap.dataset.swiped) openSheet(e); };
+        sec.appendChild(wrap);
       });
       box.appendChild(sec);
     });
   }
   $('more').onclick = () => { histDays += 7; loadHistory(); };
+
+  // Gmail-style: drag an entry left; past a third of the way it's armed, let go to delete (with undo).
+  function swipeToDelete(wrap, el, entry) {
+    let x0 = 0, y0 = 0, dx = 0, drag = false, armed = false, id = null;
+    el.addEventListener('pointerdown', e => { x0 = e.clientX; y0 = e.clientY; dx = 0; drag = false; id = e.pointerId; delete wrap.dataset.swiped; });
+    el.addEventListener('pointermove', e => {
+      if (e.pointerId !== id) return;
+      const mx = e.clientX - x0, my = e.clientY - y0;
+      if (!drag) {
+        if (Math.abs(mx) < 8 || Math.abs(mx) < Math.abs(my)) return;
+        drag = true; wrap.classList.add('dragging'); el.setPointerCapture(id);
+      }
+      dx = mx < 0 ? mx : mx * .15;                       // only left really moves; right just resists
+      el.style.transform = `translateX(${dx}px)`;
+      const a = dx < -wrap.offsetWidth * .34;
+      if (a !== armed) { armed = a; wrap.classList.toggle('armed', a); haptic(a ? 12 : 6); }
+    });
+    const end = () => {
+      if (!drag) { id = null; return; }
+      drag = false; id = null; wrap.dataset.swiped = '1';
+      wrap.classList.remove('dragging');
+      if (armed) { removeEntry(wrap, entry); }
+      else { el.style.transform = ''; wrap.classList.remove('armed'); }
+      armed = false;
+      setTimeout(() => delete wrap.dataset.swiped, 50);
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
+  let pendingDel = null;
+  function commitDelete() {
+    if (!pendingDel) return;
+    const { e } = pendingDel; clearTimeout(pendingDel.t); pendingDel = null;
+    server('deleteEntry', [e.id]).then(() => loadToday()).catch(err => { say("Couldn't delete: " + err.message); hist.push(e); renderHistory(); loadToday(); });
+  }
+  function removeEntry(wrap, e) {
+    commitDelete();                                      // finish any earlier delete first
+    wrap.classList.add('gone');
+    setTimeout(() => {                                   // close the gap
+      wrap.style.height = wrap.offsetHeight + 'px'; void wrap.offsetHeight;
+      wrap.style.height = '0px'; wrap.style.marginBottom = '0px'; wrap.style.opacity = '0';
+    }, 180);
+    setTimeout(() => { hist = hist.filter(x => x.id !== e.id); today = today.filter(x => x.id !== e.id); renderHistory(); renderToday(); }, 470);
+    pendingDel = { e, t: setTimeout(commitDelete, 6000) };
+    say('Entry deleted', { label: 'Undo', fn: () => {
+      if (!pendingDel || pendingDel.e !== e) return;
+      clearTimeout(pendingDel.t); pendingDel = null;
+      if (!hist.some(x => x.id === e.id)) hist.push(e);
+      if (dayStart(e.start) === dayStart(Date.now()) && !today.some(x => x.id === e.id)) today.push(e);
+      renderHistory(); renderToday(); haptic(10);
+    } });
+  }
   $('addEntry').onclick = () => openSheet(null);
 
   // ----- edit sheet -----
@@ -1173,7 +1239,7 @@
 
   function loadToday() {
     server('history', [dayStart(Date.now()), Date.now() + 60000])
-      .then(list => { today = list; renderToday(); })
+      .then(list => { today = list.filter(x => !pendingDel || x.id !== pendingDel.e.id); renderToday(); })
       .catch(() => {});
   }
 

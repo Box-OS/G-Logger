@@ -22,7 +22,7 @@ The app runs as *you*: it only ever touches your own calendar, and creates a cal
 - **Today timeline**: a zoomable vertical line of today's sessions as coloured blobs (pinch or ± to zoom); tap a blob for details and editing.
 - **Forgot to start?** While a timer runs, tap **+5** to move its start 5 minutes earlier (or **−5** to undo); the calendar event follows.
 - **Calendar as the database**: every session becomes a real, colour-coded Google Calendar event, so your week sits alongside your schedule.
-- **History and editing**: browse past days with per-day totals and a category split; tap any entry to change its category, details or times, delete it, or add one you forgot to time.
+- **History and editing**: browse past days with per-day totals and a category split; tap any entry to change its category or times, swipe it left to delete (with undo), or add one you forgot to time.
 - **Instant UI**: taps update the screen immediately while saves happen in the background, and roll back with a clear message if a save fails.
 - **Discard** for accidental starts.
 - **In-app settings**: choose the target calendar (created automatically if missing, or `primary`) and edit categories and their colours.
