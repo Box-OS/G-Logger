@@ -233,7 +233,7 @@
   #tl .hr { position:absolute; left:0; width:calc(50% - 22px); text-align:right; font-size:13px; font-weight:600; color:var(--muted); transform:translateY(-50%); font-variant-numeric:tabular-nums; }
   #tl .hr.minor { font-size:11px; font-weight:500; opacity:.75; }
   #tl .now { position:absolute; left:calc(50% - 26px); width:52px; height:2px; margin-top:-1px; border-radius:1px; background:var(--ink); }
-  #tl .nowlbl { position:absolute; left:0; width:calc(50% - 32px); text-align:right; transform:translateY(-50%); }
+  #tl .nowlbl { position:absolute; left:calc(50% + 32px); text-align:left; transform:translateY(-50%); z-index:2; }
   #tl .nowlbl span { display:inline-block; padding:3px 9px; border-radius:999px; background:var(--ink); color:var(--paper); font-size:11px; font-weight:700; }
   .blob { position:absolute; left:50%; width:24px; margin-left:-12px; padding:0; border-radius:999px; background:var(--cc); box-shadow:0 0 0 3px var(--paper); transition:transform .15s ease, height .25s ease, top .25s ease; }
   .blob:hover { transform:scaleX(1.25); }
@@ -1524,7 +1524,7 @@
     for (let t = from; t <= to; t += tik * 60000) {
       const d = new Date(t), mins = d.getHours() * 60 + d.getMinutes(), onHour = d.getMinutes() === 0;
       add('tick' + (onHour ? ' major' : ''), { top: y(t) + 'px' });
-      if (mins % lab || Math.abs(y(t) - nowY) < 14) continue;
+      if (mins % lab) continue;
       add('hr' + (onHour ? '' : ' minor'), { top: y(t) + 'px' }, onHour ? d.toLocaleTimeString([], { hour: 'numeric' }) : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
     }
     add('now', { top: nowY + 'px' });
