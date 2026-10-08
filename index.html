@@ -1583,14 +1583,23 @@
     };
     fling = requestAnimationFrame(step);
   }
+  // The timeline redraws every frame, so the element under your finger gets replaced mid-drag.
+  // iOS keeps sending that finger's events to the old (now detached) element, where they never
+  // reach #tl — so we also listen on the touched element itself, and ignore the duplicate.
+  const once = e => e.__tl ? false : (e.__tl = true);
+  const watch = el => {
+    if (el === TL || el.__tlw) return; el.__tlw = true;
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd); el.addEventListener('touchcancel', onEnd);
+  };
   TL.addEventListener('touchstart', e => {
-    cancelAnimationFrame(fling);
+    cancelAnimationFrame(fling); watch(e.target);
     const t = e.touches;
     if (t.length === 2) g = { pinch: true, d: gap(t), span: vSpan, at: timeAtY(mid(t)) };
     else if (t.length === 1) g = { x: t[0].clientX, y: t[0].clientY, s: vStart, lock: null, ly: t[0].clientY, lt: performance.now(), v: 0 };
   }, { passive: true });
-  TL.addEventListener('touchmove', e => {
-    if (!g) return;
+  function onMove(e) {
+    if (!once(e) || !g) return;
     const t = e.touches;
     if (g.pinch) {
       if (t.length !== 2) return;
@@ -1603,14 +1612,20 @@
     const k = vSpan / lineLen(), now = performance.now(), dt = Math.max(1, now - g.lt);
     g.v = .8 * ((t[0].clientY - g.ly) * k / dt) + .2 * g.v; g.ly = t[0].clientY; g.lt = now;
     vStart = g.s - dy * k; clampView(); redraw();
-  }, { passive: false });
-  TL.addEventListener('touchend', e => {
-    if (!g) return;
-    if (e.touches.length) { if (g.pinch && e.touches.length === 1) g = null; return; }
+  }
+  function onEnd(e) {
+    if (!once(e) || !g) return;
+    if (e.type === 'touchcancel') { TL.classList.remove('drag'); g = null; return; }
+    if (e.touches.length === 1) {   // lifted one finger of a pinch: carry on dragging with the other
+      const t = e.touches[0]; g = { x: t.clientX, y: t.clientY, s: vStart, lock: 'y', ly: t.clientY, lt: performance.now(), v: 0 }; return;
+    }
+    if (e.touches.length) return;
     if (g.lock === 'y' && performance.now() - g.lt < 80) startFling(g.v);
     if (g.pinch || g.lock === 'y') saveSpan();
     TL.classList.remove('drag'); g = null;
-  });
+  }
+  TL.addEventListener('touchmove', onMove, { passive: false });
+  TL.addEventListener('touchend', onEnd); TL.addEventListener('touchcancel', onEnd);
   ['gesturestart', 'gesturechange'].forEach(ev => TLP.addEventListener(ev, e => e.preventDefault()));   // stop iPhone zooming the whole page
   // Mouse: drag to pan, wheel to pan, ctrl/trackpad-pinch to zoom.
   TL.addEventListener('mousedown', e => {
