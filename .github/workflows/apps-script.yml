@@ -44,3 +44,6 @@ jobs:
         env:
           DEPLOYMENT_ID: ${{ secrets.DEPLOYMENT_ID }}
         run: clasp deploy -i "$DEPLOYMENT_ID" -d "GitHub ${GITHUB_SHA::7}"
+      - name: Show deployments (the one shown as *** is the one this workflow updates)
+        if: ${{ inputs.deploy }}
+        run: clasp list-deployments
