@@ -251,13 +251,12 @@
   }
   :root[data-sport] #catWrap { position:relative; margin-top:26px; }
   :root:not([data-sport]) #cats {
-    position:absolute; inset:0; z-index:2; display:flex; align-items:flex-start; gap:0; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; overscroll-behavior-x:contain;
-    scroll-snap-type:x mandatory; padding:var(--pt, 10px) calc(50% - 38px) 0;
+    position:absolute; inset:0; z-index:2; display:block; overflow:hidden; touch-action:pan-y; cursor:grab;
     -webkit-mask-image:var(--ring); mask-image:var(--ring);   /* icons get cut off where the band ends */
   }
   :root:not([data-sport]) #cats::-webkit-scrollbar { display:none; }
   :root:not([data-sport]) .cat {
-    position:relative; z-index:1; flex:0 0 76px; height:66px; padding:0 6px; gap:3px; scroll-snap-align:center; will-change:transform;
+    position:absolute; top:var(--pt, 10px); left:50%; margin-left:-38px; z-index:1; width:76px; height:66px; padding:0 6px; gap:3px; will-change:transform; backface-visibility:hidden;
     flex-direction:column; align-items:center; justify-content:center; border:0; border-radius:999px; background:transparent;
     font-size:12.5px; font-weight:600; color:var(--ink); transition:color .25s ease;
   }
@@ -516,6 +515,37 @@
     try { $('hapticL').click(); } catch (e) {}
   }
 
+  // ---------- horizontal drags that iPhone Safari can't steal ----------
+  // Once a touch is clearly sideways we preventDefault, so the page and the screen pager don't take over.
+  function hDrag(el, h) {
+    let x0 = 0, y0 = 0, lock = null, mouse = false;
+    const begin = (x, y) => { x0 = x; y0 = y; lock = null; };
+    const move = (x, y, ev) => {
+      const dx = x - x0, dy = y - y0;
+      if (!lock) {
+        if (Math.abs(dx) < 7 && Math.abs(dy) < 7) return;
+        lock = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+        if (lock === 'x') h.start && h.start();
+      }
+      if (lock !== 'x') return;
+      if (ev && ev.cancelable) ev.preventDefault();
+      h.move(dx, ev);
+    };
+    const finish = cancel => { if (lock === 'x') { h.end(cancel); el.dataset.dragged = '1'; setTimeout(() => delete el.dataset.dragged, 350); } lock = null; };
+    el.addEventListener('touchstart', e => { if (e.touches.length === 1) begin(e.touches[0].clientX, e.touches[0].clientY); }, { passive: true });
+    el.addEventListener('touchmove', e => { if (e.touches.length === 1) move(e.touches[0].clientX, e.touches[0].clientY, e); }, { passive: false });
+    el.addEventListener('touchend', () => finish(false));
+    el.addEventListener('touchcancel', () => finish(true));
+    el.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'mouse' || e.button) return;
+      mouse = true; begin(e.clientX, e.clientY);
+      const mm = ev => move(ev.clientX, ev.clientY, ev);
+      const up = () => { removeEventListener('pointermove', mm); removeEventListener('pointerup', up); mouse = false; finish(false); };
+      addEventListener('pointermove', mm); addEventListener('pointerup', up);
+    });
+    el.addEventListener('click', e => { if (el.dataset.dragged) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+  }
+
   // ---------- category icons ----------
   const ICONS = {
     target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/>',
@@ -557,7 +587,11 @@
       }
     } else delete document.documentElement.dataset.sport;
     $('sportToggle').setAttribute('aria-checked', String(sport));
-    if (S) { layoutArc(); centerSelectedCat(false); curveCats(); requestAnimationFrame(placeCatHighlight); }
+    if (S) {
+      $('cats').querySelectorAll('.cat').forEach(b => { b.style.transform = ''; b.style.opacity = ''; b.style.visibility = ''; });
+      $('cats').scrollLeft = 0; arc = null;
+      layoutArc(); centerSelectedCat(false); curveCats(); requestAnimationFrame(placeCatHighlight);
+    }
   }
   applySport();
   $('sportToggle').onclick = () => {
@@ -587,11 +621,67 @@
     Object.entries({ '--Ro': Ro, '--T': T, '--cy': cy, '--pt': cy - Rm - 33, '--hlTop': cy - Rm - 33 }).forEach(([k, v]) => wrap.style.setProperty(k, v + 'px'));
     wrap.style.height = Math.ceil(edgeBottom + 10) + 'px';
   }
+  // Arc bar: no browser scrolling. Every icon is placed from one offset in the same frame.
+  const ITEM = 76;
+  let wOff = 0, wAnim = 0, wStart = 0, wSamples = [], wWheelT = 0;
+  const wItems = () => [...$('cats').querySelectorAll('.cat')];
+  function renderWheel() {
+    if (sport) return;
+    if (!arc) layoutArc();
+    if ($('cats').scrollLeft) $('cats').scrollLeft = 0;   // positions come only from wOff
+    const items = wItems(); let best = null, bd = Infinity;
+    items.forEach((b, i) => {
+      const x = i * ITEM + wOff, ax = Math.abs(x), k = Math.min(1, ax / (arc.W / 2));
+      const dy = arc.cy - Math.sqrt(Math.max(0, arc.Rm * arc.Rm - x * x)) - arc.top;
+      b.style.transition = 'background-color .25s ease, color .25s ease';
+      b.style.transform = `translate3d(${x.toFixed(2)}px, ${dy.toFixed(2)}px, 0) scale(${(1.14 - .5 * Math.pow(k, 1.25)).toFixed(4)})`;
+      b.style.opacity = (1 - .3 * k).toFixed(3);
+      b.style.visibility = ax > arc.W / 2 + ITEM ? 'hidden' : '';
+      if (ax < bd) { bd = ax; best = b; }
+    });
+    if (best && best.dataset.name !== selected && !holding) { selected = best.dataset.name; renderTimer(); haptic(6); }
+  }
+  const wClamp = v => { const min = -(wItems().length - 1) * ITEM; return v > 0 ? v * .35 : v < min ? min + (v - min) * .35 : v; };
+  function wheelTo(idx, ms) {
+    cancelAnimationFrame(wAnim);
+    const n = wItems().length; idx = Math.max(0, Math.min(n - 1, idx));
+    const from = wOff, to = -idx * ITEM, t0 = performance.now(); ms = ms || 420;
+    const back = t => { const c = 1.25; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };   // tiny overshoot
+    const step = now => {
+      const t = Math.min(1, (now - t0) / ms);
+      wOff = from + (to - from) * (reduced ? 1 : back(t)); renderWheel();
+      if (t < 1) wAnim = requestAnimationFrame(step);
+    };
+    wAnim = requestAnimationFrame(step);
+  }
+  hDrag($('cats'), {
+    start() { if (sport) return; cancelAnimationFrame(wAnim); wStart = wOff; wSamples = []; },
+    move(dx) {
+      if (sport) return;
+      wOff = wClamp(wStart + dx);
+      const now = performance.now(); wSamples.push([now, wOff]); wSamples = wSamples.filter(s => now - s[0] < 90);
+      renderWheel();
+    },
+    end() {
+      if (sport) return;
+      const a = wSamples[0], z = wSamples[wSamples.length - 1];
+      const v = a && z && z[0] > a[0] ? (z[1] - a[1]) / (z[0] - a[0]) : 0;    // px per ms
+      const target = wOff + v * 200;                                            // fling a little further
+      wheelTo(Math.round(-target / ITEM), 360 + Math.min(240, Math.abs(v) * 120));
+    },
+  });
+  $('cats').addEventListener('wheel', e => {
+    if (sport) return;
+    e.preventDefault(); cancelAnimationFrame(wAnim);
+    wOff = wClamp(wOff - (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY)); renderWheel();
+    clearTimeout(wWheelT); wWheelT = setTimeout(() => wheelTo(Math.round(-wOff / ITEM), 300), 120);
+  }, { passive: false });
+
   function curveCats() {
+    if (!sport) { renderWheel(); return; }
     cancelAnimationFrame(curveRaf);
     curveRaf = requestAnimationFrame(() => {
-      const cats = $('cats'), mid = cats.scrollLeft + cats.clientWidth / 2, base = sport ? 1 : 1.12;
-      if (!sport && !arc) layoutArc();
+      const cats = $('cats'), mid = cats.scrollLeft + cats.clientWidth / 2, base = 1;
       let best = null, bestD = Infinity;
       cats.querySelectorAll('.cat').forEach(b => {
         const dxPx = b.offsetLeft + b.offsetWidth / 2 - mid, o = dxPx / b.offsetWidth, a = Math.max(-3, Math.min(3, o)), m = Math.abs(a);
@@ -614,10 +704,16 @@
     });
   }
   function centerSelectedCat(smooth) {
+    if (!sport) {
+      const i = wItems().findIndex(x => x.dataset.name === selected);
+      if (i < 0) return;
+      if (smooth) wheelTo(i); else { cancelAnimationFrame(wAnim); wOff = -i * ITEM; renderWheel(); }
+      return;
+    }
     const cats = $('cats'), b = [...cats.querySelectorAll('.cat')].find(x => x.dataset.name === selected);
     if (b) cats.scrollTo({ left: b.offsetLeft + b.offsetWidth / 2 - cats.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
   }
-  $('cats').addEventListener('scroll', curveCats, { passive: true });
+  $('cats').addEventListener('scroll', () => { if (sport) curveCats(); }, { passive: true });
 
   // ---------- screens (swipe between them) ----------
   const PAGES = ['timer', 'timeline', 'history', 'settings'];
@@ -1016,7 +1112,7 @@
         wrap.innerHTML = '<div class="swipe-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/></svg></div>';
         wrap.appendChild(b);
         swipeToDelete(wrap, b, e);
-        b.onclick = () => { if (!wrap.dataset.swiped) openSheet(e); };
+        b.onclick = () => openSheet(e);
         sec.appendChild(wrap);
       });
       box.appendChild(sec);
@@ -1026,31 +1122,22 @@
 
   // Gmail-style: drag an entry left; past a third of the way it's armed, let go to delete (with undo).
   function swipeToDelete(wrap, el, entry) {
-    let x0 = 0, y0 = 0, dx = 0, drag = false, armed = false, id = null;
-    el.addEventListener('pointerdown', e => { x0 = e.clientX; y0 = e.clientY; dx = 0; drag = false; id = e.pointerId; delete wrap.dataset.swiped; });
-    el.addEventListener('pointermove', e => {
-      if (e.pointerId !== id) return;
-      const mx = e.clientX - x0, my = e.clientY - y0;
-      if (!drag) {
-        if (Math.abs(mx) < 8 || Math.abs(mx) < Math.abs(my)) return;
-        drag = true; wrap.classList.add('dragging'); el.setPointerCapture(id);
-      }
-      dx = mx < 0 ? mx : mx * .15;                       // only left really moves; right just resists
-      el.style.transform = `translateX(${dx}px)`;
-      const a = dx < -wrap.offsetWidth * .34;
-      if (a !== armed) { armed = a; wrap.classList.toggle('armed', a); haptic(a ? 12 : 6); }
+    let armed = false, dx = 0;
+    hDrag(el, {
+      start() { wrap.classList.add('dragging'); armed = false; },
+      move(mx) {
+        dx = mx < 0 ? mx : mx * .15;                      // only left really moves; right just resists
+        el.style.transform = `translate3d(${dx}px,0,0)`;
+        const a = dx < -wrap.offsetWidth * .34;
+        if (a !== armed) { armed = a; wrap.classList.toggle('armed', a); haptic(a ? 12 : 6); }
+      },
+      end(cancelled) {
+        wrap.classList.remove('dragging');
+        if (armed && !cancelled) removeEntry(wrap, entry);
+        else { el.style.transform = ''; wrap.classList.remove('armed'); }
+        armed = false;
+      },
     });
-    const end = () => {
-      if (!drag) { id = null; return; }
-      drag = false; id = null; wrap.dataset.swiped = '1';
-      wrap.classList.remove('dragging');
-      if (armed) { removeEntry(wrap, entry); }
-      else { el.style.transform = ''; wrap.classList.remove('armed'); }
-      armed = false;
-      setTimeout(() => delete wrap.dataset.swiped, 50);
-    };
-    el.addEventListener('pointerup', end);
-    el.addEventListener('pointercancel', end);
   }
   let pendingDel = null;
   function commitDelete() {
