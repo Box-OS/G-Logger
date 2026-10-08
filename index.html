@@ -159,9 +159,11 @@
   .ftop { display:flex; justify-content:space-between; align-items:center; }
   .fbtn { height:42px; min-width:42px; padding:0 16px; border-radius:999px; display:grid; place-items:center; background:color-mix(in srgb, var(--on-f) 16%, transparent); color:var(--on-f); font-size:15px; font-weight:600; }
   .fbtn svg { width:20px; height:20px; }
-  .fmid { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; }
-  #fclock { font-size:clamp(72px, 23vw, 136px); font-weight:600; line-height:1; letter-spacing:-.055em; font-variant-numeric:tabular-nums; font-feature-settings:"tnum"; }
-  #fmeta { font-size:15px; opacity:.75; text-align:center; max-width:90%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .fmid { flex:1; }
+  body.focusing #dial { z-index:21; box-shadow:0 30px 80px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.12); }
+  #resume { display:block; margin:16px auto 0; height:42px; padding:0 18px; border-radius:999px; background:var(--surface); border:1px solid var(--line); font-size:14px; font-weight:600; }
+  #msg button { margin-left:12px; padding:0; color:var(--ink); font-weight:700; text-decoration:underline; text-underline-offset:3px; }
+  #fmeta { font-size:15px; opacity:.75; margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #fhint { font-size:13px; opacity:.6; margin-bottom:12px; }
   #fcat { margin:0; font-size:clamp(56px, 17vw, 116px); font-weight:800; line-height:.88; letter-spacing:-.05em; overflow-wrap:anywhere; }
 
@@ -217,6 +219,7 @@
       <button id="earlier" aria-label="Move start 5 minutes earlier">+5</button>
     </div>
     <button id="cancel" class="hidden">Discard this session</button>
+    <button id="resume" class="hidden"></button>
     <input id="title" class="field" placeholder="What are you working on? (optional)" autocomplete="off">
     <div id="cats"></div>
   </section>
@@ -270,11 +273,9 @@
         <button class="fbtn" id="fmin" aria-label="Back to the app"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
         <button class="fbtn" id="fplus" aria-label="Move start 5 minutes earlier">+5</button>
       </div>
-      <div class="fmid">
-        <div id="fclock">0:00:00</div>
-        <div id="fmeta"></div>
-      </div>
-      <div id="fhint">Hold anywhere to stop</div>
+      <div class="fmid"></div>
+      <div id="fmeta"></div>
+      <div id="fhint">Hold the circle for 3 seconds to stop</div>
       <h2 id="fcat"></h2>
     </div>
   </div>
@@ -307,11 +308,18 @@
   const fmtDur = ms => { const m = Math.round(ms / 60000); return m < 1 ? '<1m' : m < 60 ? m + 'm' : Math.floor(m / 60) + 'h' + (m % 60 ? ' ' + (m % 60) + 'm' : ''); };
   const fmtTime = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   let sayT = 0;
-  const say = t => {
+  const say = (t, action) => {
     const m = $('msg'); clearTimeout(sayT);
     if (!t) { m.classList.remove('show'); return; }
-    m.textContent = t; m.classList.add('show');
-    sayT = setTimeout(() => m.classList.remove('show'), 2800);
+    m.textContent = t;
+    m.style.pointerEvents = action ? 'auto' : 'none';
+    if (action) {
+      const b = document.createElement('button'); b.textContent = action.label;
+      b.onclick = () => { m.classList.remove('show'); action.fn(); };
+      m.appendChild(b);
+    }
+    m.classList.add('show');
+    sayT = setTimeout(() => { m.classList.remove('show'); m.style.pointerEvents = 'none'; }, action ? 6000 : 2800);
   };
   const catByName = n => S.cats.find(c => c.name === n);
 
@@ -387,7 +395,8 @@
 
   // ---------- timer ----------
   let selected = null;
-  const HOLD_MS = 700;
+  const HOLD_MS = 3000;
+  let lastStopped = null, fillAnim = false;
 
   function renderCats() {
     $('cats').innerHTML = '';
@@ -428,29 +437,43 @@
     $('sub').textContent = running ? (running.title || '') : '';
     $('hint').textContent = act === 'start' ? 'Hold to start'
       : act === 'switch' ? 'Hold to switch to ' + (selected || running.cat)
-      : act === 'stop' ? 'Hold to stop · tap to focus' : 'then hold here';
+      : act === 'stop' ? (focusOpen() ? 'Hold 3s to stop' : 'Hold to stop · tap to focus') : 'then hold here';
+    const canResume = !running && lastStopped && Date.now() - lastStopped.end < 30 * 60000;
+    $('resume').classList.toggle('hidden', !canResume);
+    if (canResume) $('resume').textContent = `↺  Resume ${lastStopped.cat} · stopped ${fmtTime(lastStopped.end)}`;
     if (running) {
-      const upd = () => { const t = fmt(Date.now() - running.start); $('clock').textContent = t; $('fclock').textContent = t; $('later').disabled = Date.now() - running.start < 60000; };
+      const upd = () => { $('clock').textContent = fmt(Date.now() - running.start); $('later').disabled = Date.now() - running.start < 60000; };
       $('fcat').textContent = running.cat;
       $('fmeta').textContent = (running.title ? running.title + '  ·  ' : '') + 'Started ' + fmtTime(running.start);
       focusColor(running.color);
       upd(); tick = setInterval(upd, 1000);
     } else {
       $('clock').textContent = '0:00:00';
-      if (!$('focus').classList.contains('hidden') && !fHold) closeFocus();
+      if (focusOpen() && !holding && !fillAnim) closeFocus();
     }
     if (S) renderToday();
   }
 
-  let holding = false, holdT0 = 0, raf = 0;
+  let holding = false, holdT0 = 0, raf = 0, holdAct = null;
+  const focusOpen = () => !$('focus').classList.contains('hidden');
   function holdStart(e) {
     if (e) e.preventDefault();
-    if (holding || !holdAction()) return;
-    holding = true; holdT0 = performance.now(); $('dial').classList.add('holding');
-    const draining = holdAction() === 'stop';
+    const act = holdAction();
+    if (holding || !act) return;
+    holding = true; holdAct = act; holdT0 = performance.now(); $('dial').classList.add('holding');
+    const wasOpen = focusOpen();
+    const filling = act !== 'stop';
+    if (filling) {   // the liquid rises around the circle while you hold
+      focusColor(catByName(selected || running.cat).color);
+      cancelAnimationFrame(lvRaf); clearTimeout(fullT);
+      F.classList.remove('hidden', 'full'); document.body.classList.add('focusing');
+      setLevel(1);
+    }
     const step = now => {
       const p = Math.min(1, (now - holdT0) / HOLD_MS);
-      setRing(draining ? 1 - p : p);
+      setRing(filling ? p : 1 - p);
+      if (filling) setLevel(1 - p);
+      else if (wasOpen) { setLevel(p); F.style.setProperty('--fade', Math.max(0, 1 - p * 1.8)); }
       if (p >= 1) { holdEnd(true); return; }
       raf = requestAnimationFrame(step);
     };
@@ -459,14 +482,24 @@
   function holdEnd(done) {
     if (!holding) return;
     holding = false; cancelAnimationFrame(raf); $('dial').classList.remove('holding');
+    const act = holdAct, wasOpen = focusOpen();
     if (done === true) {
       if (navigator.vibrate) navigator.vibrate(18);
-      if (holdAction() === 'stop') stop(); else { start(catByName(selected || running.cat)); openFocus(); }
-    } else {
-      const tap = performance.now() - holdT0 < 220;
-      renderTimer();
-      if (tap && running) openFocus(650);
+      if (act === 'stop') { stop(); closeFocus(); }
+      else { start(catByName(selected || running.cat)); F.style.setProperty('--fade', 1); F.classList.add('full'); renderTimer(); }
+      return;
     }
+    const tap = performance.now() - holdT0 < 220;
+    if (act === 'stop') {
+      if (wasOpen) { F.style.setProperty('--fade', 1); animateLevel(0, 280); }
+      renderTimer();
+      if (tap && !wasOpen) openFocus(650);
+      return;
+    }
+    // let go before the fill finished: drain away, nothing starts
+    if (tap && running) { closeFocus(); renderTimer(); openFocus(650); return; }
+    fillAnim = true; renderTimer();
+    animateLevel(1, reduced ? 1 : 380, () => { fillAnim = false; closeFocus(); });
   }
   const dial = $('dial');
   dial.addEventListener('pointerdown', holdStart);
@@ -499,6 +532,7 @@
 
   function start(c) {
     if (startSync) syncStart();
+    lastStopped = null;
     const prev = running, title = $('title').value.trim(), my = ++seq;
     const t0 = Date.now();
     running = { cat: c.name, color: c.color, title, start: t0 };
@@ -518,12 +552,27 @@
   function stop() {
     if (startSync) syncStart();
     const prev = running, my = ++seq;
-    running = null; renderTimer();
-    server('stop').then(() => { say('Saved to ' + S.calendar); loadToday(); })
+    running = null;
+    lastStopped = prev ? Object.assign({}, prev, { end: Date.now() }) : null;
+    renderTimer();
+    if (prev) say(`Saved ${fmtDur(Date.now() - prev.start)} of ${prev.cat}`, { label: 'Undo', fn: resume });
+    server('stop').then(() => loadToday())
       .catch(e => { if (my === seq) { running = prev; renderTimer(); } say("Couldn't save: " + e.message); });
   }
+  function resume() {
+    if (running || !lastStopped) return;
+    const ls = lastStopped, my = ++seq;
+    lastStopped = null;
+    running = Object.assign({}, ls); delete running.end;
+    renderTimer(); say('Resumed ' + ls.cat);
+    server('resume')
+      .then(s => { if (my === seq) { running = s; renderTimer(); loadToday(); } })
+      .catch(e => { if (my === seq) { running = null; lastStopped = ls; renderTimer(); } say("Couldn't resume: " + e.message); });
+  }
+  $('resume').onclick = resume;
+
   $('cancel').onclick = () => {
-    clearTimeout(startSync); startSync = 0;
+    clearTimeout(startSync); startSync = 0; lastStopped = null;
     const prev = running, my = ++seq;
     running = null; renderTimer();
     server('cancel').then(() => say('Discarded'))
@@ -647,8 +696,7 @@
   // ---------- focus screen ----------
   const F = $('focus');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let level = 1, lvRaf = 0, fHold = false, fT0 = 0, fRaf = 0, fullT = 0;
-  const STOP_MS = 900;
+  let level = 1, lvRaf = 0, fullT = 0;
   const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   function focusColor(c) { const h = hex(c); F.style.setProperty('--f', h); F.style.setProperty('--on-f', onColor(h)); }
   function setLevel(v) { level = v; $('liquid').style.transform = `translateY(${(v * 100).toFixed(2)}%)`; }
@@ -668,42 +716,19 @@
     focusColor(running.color); renderTimer();
     clearTimeout(fullT);
     F.style.setProperty('--fade', 1);
-    F.classList.remove('hidden', 'full');
+    F.classList.remove('hidden', 'full'); document.body.classList.add('focusing');
     if (reduced) { setLevel(0); F.classList.add('full'); return; }
     setLevel(1);
     animateLevel(0, ms);
     fullT = setTimeout(() => F.classList.add('full'), ms * .5);
   }
   function closeFocus() {
-    cancelAnimationFrame(lvRaf); cancelAnimationFrame(fRaf); clearTimeout(fullT);
-    fHold = false; F.classList.add('hidden'); F.classList.remove('full', 'draining'); setLevel(1);
+    cancelAnimationFrame(lvRaf); clearTimeout(fullT);
+    F.classList.add('hidden'); F.classList.remove('full', 'draining'); setLevel(1);
+    document.body.classList.remove('focusing'); renderTimer();
   }
   $('fmin').onclick = () => { F.classList.remove('full'); if (reduced) closeFocus(); else animateLevel(1, 550, closeFocus); };
   $('fplus').onclick = () => nudge(NUDGE_MIN);
-  F.addEventListener('pointerdown', e => {
-    if (e.target.closest('.fbtn') || !running || !F.classList.contains('full')) return;
-    e.preventDefault();
-    fHold = true; fT0 = performance.now(); cancelAnimationFrame(lvRaf); F.classList.add('draining');
-    const step = now => {
-      if (!fHold) return;
-      const p = Math.min(1, (now - fT0) / STOP_MS);
-      setLevel(p); F.style.setProperty('--fade', Math.max(0, 1 - p * 1.8));
-      if (p >= 1) {
-        fHold = false;
-        if (navigator.vibrate) navigator.vibrate(18);
-        stop(); closeFocus();
-        return;
-      }
-      fRaf = requestAnimationFrame(step);
-    };
-    fRaf = requestAnimationFrame(step);
-  });
-  ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => F.addEventListener(ev, () => {
-    if (!fHold) return;
-    fHold = false; cancelAnimationFrame(fRaf); F.classList.remove('draining');
-    F.style.setProperty('--fade', 1);
-    animateLevel(0, 280);
-  }));
   F.addEventListener('contextmenu', e => e.preventDefault());
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !F.classList.contains('hidden')) $('fmin').click(); });
 
@@ -838,7 +863,7 @@
 
   // ---------- boot ----------
   server('getInit')
-    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; selected = running ? running.cat : null; renderCats(); renderTimer(); loadToday(); fillSettings(); })
+    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; lastStopped = init.lastStopped || null; selected = running ? running.cat : null; renderCats(); renderTimer(); loadToday(); fillSettings(); })
     .catch(e => { $('what').textContent = "Couldn't load"; $('sub').textContent = e.message; });
 </script>
 </body>

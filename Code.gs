@@ -28,8 +28,12 @@ function doGet() {
 }
 
 function getInit() {
-  return { settings: getSettings(), colors: COLORS, running: readJSON('running') };
+  const running = readJSON('running'), last = readJSON('lastStopped');
+  const lastStopped = !running && last && Date.now() - last.end < RESUME_WINDOW_MS ? last : null;
+  return { settings: getSettings(), colors: COLORS, running, lastStopped };
 }
+
+const RESUME_WINDOW_MS = 30 * 60 * 1000;
 
 function getSettings() {
   return readJSON('settings') || DEFAULTS;
@@ -61,6 +65,7 @@ function runningEvent_(s) {
 // Starts a timer. If one is already running it's stopped first, so tapping another category switches.
 function start(catName, title) {
   if (readJSON('running')) stop();
+  props().deleteProperty('lastStopped');   // switching tasks isn't something to undo
   const st = getSettings();
   const cat = st.cats.find(c => c.name === catName);
   if (!cat) throw new Error('Unknown category: ' + catName);
@@ -82,8 +87,24 @@ function stop() {
     ev.setTime(new Date(s.start), new Date(Math.max(Date.now(), s.start + 60000)));
     ev.setTitle(label(s.cat, s.title));
   }
+  props().setProperty('lastStopped', JSON.stringify(Object.assign({}, s, { end: Date.now() })));
   props().deleteProperty('running');
   return null;
+}
+
+// Undoes the last stop: the same calendar event keeps running from its original start.
+function resume() {
+  if (readJSON('running')) throw new Error('A timer is already running.');
+  const s = readJSON('lastStopped');
+  if (!s || Date.now() - s.end > RESUME_WINDOW_MS) throw new Error('There is no recent session to resume.');
+  const ev = runningEvent_(s);
+  if (!ev) throw new Error('That session is no longer in your calendar.');
+  ev.setTime(new Date(s.start), new Date(Math.max(Date.now(), s.start + 60000)));
+  ev.setTitle('⏱ ' + label(s.cat, s.title));
+  delete s.end;
+  props().setProperty('running', JSON.stringify(s));
+  props().deleteProperty('lastStopped');
+  return s;
 }
 
 // Moves the running timer's start time (for when you forgot to start it).
@@ -107,6 +128,7 @@ function cancel() {
   const ev = runningEvent_(s);
   if (ev) ev.deleteEvent();
   props().deleteProperty('running');
+  props().deleteProperty('lastStopped');
   return null;
 }
 

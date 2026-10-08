@@ -14,8 +14,9 @@ The app runs as *you*: it only ever touches your own calendar, and creates a cal
 
 ## Features
 
-- **Hold to start**: pick a category, then press and hold the big timer button; a ring in the category's colour fills and the session starts. Hold again to stop, or pick another category and hold to switch.
-- **Focus screen**: starting a session floods the screen with the category's colour in a liquid fill; the focus view shows the timer and the category in large type, and holding anywhere drains it to stop.
+- **Hold to start**: pick a category, then hold the big timer circle for 3 seconds; the category's colour rises around it like liquid until the screen is full and the session starts. Hold again to stop, or pick another category and hold to switch.
+- **Undo a stop**: an Undo toast, plus a Resume button for 30 minutes, picks the same session back up as if it never stopped.
+- **Focus screen**: starting a session floods the screen with the category's colour in a liquid fill; the focus view shows the timer and the category in large type, and holding the circle drains it to stop.
 - **Today timeline**: a zoomable vertical line of today's sessions as coloured blobs (pinch or ± to zoom); tap a blob for details and editing.
 - **Forgot to start?** While a timer runs, tap **+5** to move its start 5 minutes earlier (or **−5** to undo); the calendar event follows.
 - **Calendar as the database**: every session becomes a real, colour-coded Google Calendar event, so your week sits alongside your schedule.
