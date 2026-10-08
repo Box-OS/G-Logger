@@ -588,9 +588,9 @@
   // The circle shakes harder and grows while you hold; nothing else happens until 3 seconds.
   const activeDial = () => focusOpen() ? $('fdial') : $('dial');
   function shakeDial(p, extra) {
-    const d = activeDial(), k = Math.pow(p, 1.6), amp = reduced ? 0 : 1.6 * k + (extra || 0);
+    const d = activeDial(), k = Math.pow(p, 1.6), amp = reduced ? 0 : .7 * k + (extra || 0);
     dialScale = 1 + .1 * (1 - Math.pow(1 - p, 2)) + (extra ? extra / 25 : 0);
-    const dx = (Math.random() - .5) * 2 * amp, dy = (Math.random() - .5) * 2 * amp, rot = (Math.random() - .5) * 1.2 * k;
+    const dx = (Math.random() - .5) * 2 * amp, dy = (Math.random() - .5) * 2 * amp, rot = (Math.random() - .5) * .5 * k;
     d.style.transition = 'none';
     d.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) rotate(${rot.toFixed(2)}deg) scale(${dialScale.toFixed(3)})`;
   }
@@ -613,9 +613,15 @@
     const act = holdAction();
     if (holding || !act || overlayAnim) return;
     holding = true; holdAct = act; holdT0 = performance.now(); activeDial().classList.add('holding');
+    suckGeo = act === 'stop' && focusOpen() && !reduced ? suckGeometry() : null;
+    if (suckGeo) F.classList.add('sucking');
     const step = now => {
       const p = Math.min(1, (now - holdT0) / HOLD_MS);
       if (act !== 'stop') setRing(p);   // the ring fills while you hold to start
+      else {
+        setRing(1 - p);                 // ...and empties while you hold to stop
+        if (suckGeo) suckTo(suckGeo.R * (1 - .16 * Math.pow(p, 2.2)));   // only a gentle pull until the ring is empty
+      }
       shakeDial(p);
       if (p >= 1) { holdEnd(true); return; }
       raf = requestAnimationFrame(step);
@@ -633,8 +639,9 @@
         const suck = focusOpen() && !reduced;
         overlayAnim = suck;
         stop();   // the timer is stopped first; then the liquid gets vacuumed away
-        if (suck) vacuum(() => { overlayAnim = false; closeFocus(); popDial($('dial'), true); });
+        if (suck) vacuum(() => { overlayAnim = false; closeFocus(); popDial($('dial'), true); }, suckGeo);
         else { closeFocus(); popDial($('dial')); }
+        suckGeo = null;
       } else {
         leaveMini();
         const s0 = dialScale;
@@ -645,27 +652,47 @@
       }
       return;
     }
+    if (act === 'stop' && suckGeo) {
+      const g = suckGeo, from = suckGeo.cur || g.R, t0 = performance.now();
+      suckGeo = null;
+      const back = now => {
+        const p = Math.min(1, (now - t0) / 260);
+        suckTo(from + (g.R - from) * (1 - Math.pow(1 - p, 3)), g);
+        if (p < 1) requestAnimationFrame(back); else { $('liquid').style.clipPath = ''; F.classList.remove('sucking'); }
+      };
+      requestAnimationFrame(back);
+    }
     const tap = performance.now() - holdT0 < 220;
     settleDial(); renderTimer();
     if (tap && running && !focusOpen()) openFocus(650);
   }
 
   // High-pressure vacuum: the liquid is yanked into the circle, accelerating and jittering.
-  function vacuum(done) {
-    const r = $('fdial').getBoundingClientRect(), L = $('liquid');
+  // Liquid suction is a clip circle centred on the focus dial.
+  let suckGeo = null;
+  function suckGeometry() {
+    const r = $('fdial').getBoundingClientRect();
     const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const R0 = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy)), MS = 560;
+    return { cx, cy, R: Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy)) };
+  }
+  function suckTo(rad, g, jx, jy) {
+    g = g || suckGeo; if (!g) return;
+    g.cur = rad;
+    $('liquid').style.clipPath = `circle(${Math.max(0, rad).toFixed(1)}px at ${(jx || g.cx).toFixed(1)}px ${(jy || g.cy).toFixed(1)}px)`;
+  }
+  // Most of the suction happens after the ring is empty: a fast, accelerating pull with a slight tremble.
+  function vacuum(done, g) {
+    g = g || suckGeometry();
+    const R0 = g.cur || g.R, MS = 520, L = $('liquid');
     F.classList.add('sucking');
     setLevel(0);
     const t0 = performance.now();
     const step = now => {
       const p = Math.min(1, (now - t0) / MS);
-      const e = Math.pow(p, 3.2);
+      const e = Math.pow(p, 2.8);
       const jit = (1 - p) * (p > .04 ? 1 : 0);
-      const rad = Math.max(0, R0 * (1 - e) + (Math.random() - .5) * 14 * jit);
-      const jx = cx + (Math.random() - .5) * 3 * jit, jy = cy + (Math.random() - .5) * 3 * jit;
-      L.style.clipPath = `circle(${rad.toFixed(1)}px at ${jx.toFixed(1)}px ${jy.toFixed(1)}px)`;
-      shakeDial(1, .6 + 1.6 * e);   // swells a little more as it swallows the liquid
+      suckTo(R0 * (1 - e) + (Math.random() - .5) * 6 * jit, g, g.cx + (Math.random() - .5) * jit, g.cy + (Math.random() - .5) * jit);
+      shakeDial(1, .25 + .6 * e);   // swells a little more as it swallows the liquid
       if (p < 1) { requestAnimationFrame(step); return; }
       F.classList.remove('sucking'); L.style.clipPath = '';
       $('dial').style.setProperty('--s0', dialScale.toFixed(3));
