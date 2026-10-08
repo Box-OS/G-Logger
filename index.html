@@ -28,12 +28,22 @@
   button:disabled { opacity:.45; cursor:default; transform:none; }
   :focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
 
-  header { flex:none; display:flex; align-items:center; gap:8px; height:60px; padding:8px 16px 0; }
+  body { position:relative; }
+  header { position:absolute; top:0; right:0; z-index:6; height:60px; padding:12px 16px 0; }
+  .phead { display:flex; align-items:center; height:48px; margin:0 0 6px; }
+  body.minimized .phead h1 { padding-left:56px; transition:padding-left .3s ease; }
   #pager { flex:1; min-height:0; display:flex; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scrollbar-width:none; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; }
   #pager::-webkit-scrollbar { display:none; }
-  .page { flex:0 0 100%; min-width:0; scroll-snap-align:start; scroll-snap-stop:always; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; padding:14px 16px 40px; }
+  .page { flex:0 0 100%; min-width:0; scroll-snap-align:start; scroll-snap-stop:always; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; padding:12px 16px 40px; }
   #tabbar { flex:none; display:flex; border-top:1px solid var(--line); background:var(--paper); padding:6px 6px max(8px, env(safe-area-inset-bottom)); }
-  #tabbar button { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 0 2px; color:var(--muted); font-size:11px; font-weight:600; }
+  #tabbar { position:relative; }
+  #tabInd {
+    position:absolute; z-index:0; top:6px; left:6px; bottom:max(8px, env(safe-area-inset-bottom)); width:calc((100% - 12px) / 4);
+    border-radius:16px; background:color-mix(in srgb, var(--ink) 8%, transparent); pointer-events:none;
+    transform:translateX(calc(var(--f, 0) * 100%)); will-change:transform;
+  }
+  :root[data-sport] #tabInd { border-radius:10px; }
+  #tabbar button { position:relative; z-index:1; flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 0 2px; color:var(--muted); font-size:11px; font-weight:600; }
   #tabbar button svg { width:23px; height:23px; }
   #tabbar button.on { color:var(--ink); }
   #tabbar button:active { transform:none; }
@@ -171,7 +181,6 @@
   @keyframes dialpop { 0% { transform:scale(var(--s0, 1.12)); } 35% { transform:scale(.92); } 65% { transform:scale(1.04); } 100% { transform:scale(1); } }
   #focus.mini .fcontent { display:none; }
   #focus.mini #liquid svg { display:none; }
-  body.minimized header { padding-left:70px; }
   #fdial { position:absolute; margin:0; z-index:3; box-shadow:0 30px 80px rgba(0,0,0,.25), 0 2px 10px rgba(0,0,0,.12); }
   #focus.mini #fdial { display:none; }
   #filings { position:absolute; inset:0; width:100%; height:100%; z-index:2; pointer-events:none; display:none; }
@@ -214,17 +223,27 @@
   /* ---------- category picker: floating glass pill with a sliding highlight ---------- */
   .ico { display:grid; place-items:center; flex:none; }
   .ico svg { width:26px; height:26px; display:block; }
+  /* The bar is a slice of a big ring: high in the middle, curving down at both ends. */
   :root:not([data-sport]) #catWrap {
-    position:relative; margin-top:30px; padding:6px 0; overflow:hidden; border-radius:999px;
-    background:color-mix(in srgb, var(--surface) 70%, transparent);
+    --Ro:420px; --T:84px; --cy:428px; --ring:radial-gradient(circle at 50% var(--cy), transparent calc(var(--Ro) - var(--T)), #000 calc(var(--Ro) - var(--T) + 1px), #000 calc(var(--Ro) - 1px), transparent var(--Ro));
+    position:relative; height:150px; margin-top:24px;
+  }
+  :root:not([data-sport]) #catWrap::before, :root:not([data-sport]) #catWrap::after { content:''; position:absolute; inset:0; pointer-events:none; -webkit-mask-image:var(--ring); mask-image:var(--ring); }
+  :root:not([data-sport]) #catWrap::before {   /* soft shadow under the arc */
+    inset:4px 0 -4px; background:rgba(10,11,13,.045); filter:blur(8px);
+  }
+  :root:not([data-sport]) #catWrap::after {    /* the frosted band with hairline edges */
+    background:
+      radial-gradient(circle at 50% var(--cy), transparent calc(var(--Ro) - var(--T) + .5px), var(--line) calc(var(--Ro) - var(--T) + 1.5px), transparent calc(var(--Ro) - var(--T) + 2.5px), transparent calc(var(--Ro) - 2.5px), var(--line) calc(var(--Ro) - 1.5px), transparent calc(var(--Ro) - .5px)),
+      radial-gradient(circle at 50% var(--cy), transparent calc(var(--Ro) - 14px), rgba(255,255,255,.35) calc(var(--Ro) - 3px), transparent var(--Ro)),
+      color-mix(in srgb, var(--surface) 80%, transparent);
     -webkit-backdrop-filter:blur(20px) saturate(1.6); backdrop-filter:blur(20px) saturate(1.6);
-    border:1px solid var(--line); box-shadow:0 12px 34px rgba(10,11,13,.08), inset 0 1px 0 rgba(255,255,255,.45);
   }
   :root[data-sport] #catWrap { position:relative; margin-top:26px; }
   :root:not([data-sport]) #cats {
-    display:flex; gap:0; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; overscroll-behavior-x:contain;
-    scroll-snap-type:x mandatory; padding:0 calc(50% - 38px); perspective:420px; perspective-origin:50% 50%;
-    -webkit-mask-image:linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%); mask-image:linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+    position:absolute; inset:0; z-index:2; display:flex; align-items:flex-start; gap:0; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; overscroll-behavior-x:contain;
+    scroll-snap-type:x mandatory; padding:var(--pt, 10px) calc(50% - 38px) 0;
+    -webkit-mask-image:var(--ring); mask-image:var(--ring);   /* icons get cut off where the band ends */
   }
   :root:not([data-sport]) #cats::-webkit-scrollbar { display:none; }
   :root:not([data-sport]) .cat {
@@ -235,7 +254,7 @@
   :root:not([data-sport]) .cat .lbl { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   :root:not([data-sport]) .cat.active { background:transparent; color:color-mix(in srgb, var(--cc) 78%, var(--ink)); }
   #catHL {
-    position:absolute; z-index:0; top:6px; left:50%; height:66px; width:90px; margin-left:-45px; border-radius:999px; pointer-events:none; opacity:0;
+    position:absolute; z-index:1; top:var(--hlTop, 10px); left:50%; height:66px; width:90px; margin-left:-45px; border-radius:999px; pointer-events:none; opacity:0;
     background:color-mix(in srgb, var(--cc, #888) 17%, transparent);
     box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 1px 2px rgba(10,11,13,.06);
     transition:background-color .3s ease, opacity .2s ease;
@@ -299,13 +318,13 @@
 </head>
 <body>
   <header>
-    <h1 id="heading">Timer</h1>
     <button class="round" id="theme" aria-label="Switch light or dark mode"></button>
   </header>
 
   <div id="pager">
   <!-- ===== timer ===== -->
   <section class="page" id="timer">
+    <div class="phead"><h1>Timer</h1></div>
     <button id="dial" class="dial idle" aria-live="polite">
       <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="46" fill="none" stroke-width="2.4"/><circle class="ring" id="ring" cx="50" cy="50" r="46" fill="none" stroke-width="2.4" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
       <span class="face">
@@ -327,6 +346,7 @@
 
   <!-- ===== today timeline ===== -->
   <section class="page" id="timeline">
+    <div class="phead"><h1>Today</h1></div>
     <div id="today">
       <div class="thead">
         <h2><span id="todayDate"></span><span id="todayTotal"></span></h2>
@@ -338,6 +358,7 @@
 
   <!-- ===== history ===== -->
   <section class="page" id="history">
+    <div class="phead"><h1>History</h1></div>
     <div class="bar-row"><button class="pillbtn primary" id="addEntry">Add entry</button></div>
     <div id="histList"></div>
     <button class="pillbtn soft hidden" id="more">Show earlier</button>
@@ -345,6 +366,7 @@
 
   <!-- ===== settings ===== -->
   <section class="page" id="settings">
+    <div class="phead"><h1>Settings</h1></div>
     <div class="setrow">
       <div><b>Sport mode</b><span>Bold condensed type and a swipeable category picker</span></div>
       <button id="sportToggle" class="switch" role="switch" aria-checked="false" aria-label="Sport mode"><i></i></button>
@@ -363,6 +385,7 @@
   </div>
 
   <nav id="tabbar">
+    <div id="tabInd"></div>
     <button data-view="timer" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M10 2.5h4"/></svg>Timer</button>
     <button data-view="timeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v18"/><rect x="5.5" y="5" width="5" height="6" rx="2.5" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="2.5" fill="currentColor" stroke="none"/><path d="M14 8h6M14 16h4"/></svg>Today</button>
     <button data-view="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>History</button>
@@ -524,7 +547,7 @@
       }
     } else delete document.documentElement.dataset.sport;
     $('sportToggle').setAttribute('aria-checked', String(sport));
-    if (S) { centerSelectedCat(false); curveCats(); requestAnimationFrame(placeCatHighlight); }
+    if (S) { layoutArc(); centerSelectedCat(false); curveCats(); requestAnimationFrame(placeCatHighlight); }
   }
   applySport();
   $('sportToggle').onclick = () => {
@@ -540,19 +563,38 @@
     hl.style.setProperty('--cc', hex(c.color));
     hl.classList.add('show');
   }
-  window.addEventListener('resize', () => { if (S) { centerSelectedCat(false); curveCats(); } });
+  window.addEventListener('resize', () => { if (S) { layoutArc(); centerSelectedCat(false); curveCats(); } });
   // Curved wheel: items bend away and shrink with distance from the centre.
   let curveRaf = 0;
+  // Size the arc to the screen: a slice of a ring whose ends dip below the middle.
+  let arc = null;
+  function layoutArc() {
+    const wrap = $('catWrap');
+    if (sport) { arc = null; ['--Ro', '--T', '--cy', '--pt', '--hlTop'].forEach(v => wrap.style.removeProperty(v)); wrap.style.height = ''; return; }
+    const W = wrap.clientWidth || 358, Ro = Math.max(360, W * 1.18), T = 84, cy = Ro + 6, Rm = Ro - T / 2, Ri = Ro - T;
+    const edgeBottom = cy - Math.sqrt(Math.max(0, Ri * Ri - (W / 2) * (W / 2)));
+    arc = { W, Rm, cy, top: cy - Rm };
+    Object.entries({ '--Ro': Ro, '--T': T, '--cy': cy, '--pt': cy - Rm - 33, '--hlTop': cy - Rm - 33 }).forEach(([k, v]) => wrap.style.setProperty(k, v + 'px'));
+    wrap.style.height = Math.ceil(edgeBottom + 10) + 'px';
+  }
   function curveCats() {
     cancelAnimationFrame(curveRaf);
     curveRaf = requestAnimationFrame(() => {
       const cats = $('cats'), mid = cats.scrollLeft + cats.clientWidth / 2, base = sport ? 1 : 1.12;
+      if (!sport && !arc) layoutArc();
       let best = null, bestD = Infinity;
       cats.querySelectorAll('.cat').forEach(b => {
-        const o = (b.offsetLeft + b.offsetWidth / 2 - mid) / b.offsetWidth, a = Math.max(-3, Math.min(3, o)), m = Math.abs(a);
+        const dxPx = b.offsetLeft + b.offsetWidth / 2 - mid, o = dxPx / b.offsetWidth, a = Math.max(-3, Math.min(3, o)), m = Math.abs(a);
         b.style.transition = 'background-color .25s ease, color .25s ease';
-        b.style.transform = `rotateY(${(a * (sport ? 18 : 21)).toFixed(1)}deg) translateZ(${(-m * (sport ? 36 : 22)).toFixed(1)}px) scale(${(base - Math.min(.45, m * .15)).toFixed(3)})`;
-        b.style.opacity = (1 - Math.min(.6, m * .16)).toFixed(2);
+        if (sport) {
+          b.style.transform = `rotateY(${(a * 18).toFixed(1)}deg) translateZ(${(-m * 36).toFixed(1)}px) scale(${(base - Math.min(.45, m * .15)).toFixed(3)})`;
+          b.style.opacity = (1 - Math.min(.6, m * .16)).toFixed(2);
+        } else {   // flat icons ride the curve: lower and smaller toward the ends
+          const k = Math.min(1, Math.abs(dxPx) / (arc.W / 2));
+          const dy = arc.cy - Math.sqrt(Math.max(0, arc.Rm * arc.Rm - dxPx * dxPx)) - arc.top;
+          b.style.transform = `translateY(${dy.toFixed(1)}px) scale(${(1.14 - .5 * Math.pow(k, 1.25)).toFixed(3)})`;
+          b.style.opacity = (1 - .3 * k).toFixed(2);
+        }
         if (Math.abs(o) < bestD) { bestD = Math.abs(o); best = b; }
       });
       if (best && best.dataset.name !== selected && !holding) {   // whatever sits in the middle is selected
@@ -576,7 +618,6 @@
     if (v === view) return;
     view = v;
     document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
-    $('heading').textContent = TITLES[v];
     if (!S) return;
     if (v === 'history') loadHistory();
     if (v === 'timeline') { loadToday(); if (!tlScrolled) { tlScrolled = true; scrollTimelineToNow(); } }
@@ -590,6 +631,9 @@
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let pageT = 0;
   pager.addEventListener('scroll', () => {
+    const f = pager.scrollLeft / (pager.clientWidth || 1), near = PAGES[Math.round(f)];
+    $('tabbar').style.setProperty('--f', f.toFixed(4));   // indicator follows the finger
+    document.querySelectorAll('#tabbar button').forEach(b => b.classList.toggle('on', b.dataset.view === near));
     clearTimeout(pageT);
     pageT = setTimeout(() => setActive(PAGES[Math.round(pager.scrollLeft / pager.clientWidth)] || 'timer'), 60);
   }, { passive: true });

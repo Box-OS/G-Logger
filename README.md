@@ -14,7 +14,7 @@ The app runs as *you*: it only ever touches your own calendar, and creates a cal
 
 ## Features
 
-- **Category picker**: a curved glass wheel of icons; whatever sits in the centre is selected and appears larger, with the far items bending away for depth. Each category has its own icon (picked automatically, changeable in Settings).
+- **Category picker**: an arc-shaped glass bar of icons; they ride along the curve, largest at the top centre (the selection) and shrinking toward the ends. Each category has its own icon (picked automatically, changeable in Settings).
 - **Haptics**: vibration on Android and a light tap on recent iPhones.
 - **Hold to start**: pick a category, then hold the big timer circle for 3 seconds while it shakes and swells; when it pops, the category's colour floods the screen and the session starts. Hold again to stop: as the ring drains, the liquid gradually dissolves into iron filings that line up along magnetic field lines and drift in, then get pulled into the circle, which swells and pops back. Pick another category and hold to switch.
 - **Undo a stop**: an Undo toast, plus a "Continue" button with a still-ticking clock for 30 minutes, picks the same session back up as if it never stopped.
@@ -26,7 +26,7 @@ The app runs as *you*: it only ever touches your own calendar, and creates a cal
 - **Instant UI**: taps update the screen immediately while saves happen in the background, and roll back with a clear message if a save fails.
 - **Discard** for accidental starts.
 - **In-app settings**: choose the target calendar (created automatically if missing, or `primary`) and edit categories and their colours.
-- **Swipeable screens**: Timer, Today, History and Settings sit side by side; swipe between them on a phone or use the tab bar.
+- **Swipeable screens**: Timer, Today, History and Settings sit side by side with their own titles; swipe between them on a phone or use the tab bar, whose highlight tracks the swipe.
 - **Sport mode**: a Settings switch for bold condensed italic type, squarer shapes and a swipeable card picker where the centred category is selected.
 - **Light and dark mode**, following the system by default with a manual toggle; mobile-first layout.
 
