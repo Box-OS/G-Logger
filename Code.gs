@@ -11,11 +11,12 @@ const COLORS = { // Apps Script color id: [Google Calendar name, hex]
 const DEFAULTS = {
   calendar: 'Log',
   cats: [
-    { name: 'Deep work', color: 'BLUE' }, { name: 'Class', color: 'GREEN' },
-    { name: 'App', color: 'MAUVE' }, { name: 'Gym', color: 'RED' },
-    { name: 'Admin', color: 'YELLOW' }, { name: 'Leisure', color: 'GRAY' },
+    { name: 'School', color: 'GREEN', icon: 'book' }, { name: 'Study', color: 'BLUE', icon: 'target' },
+    { name: 'Gym', color: 'RED', icon: 'dumbbell' }, { name: 'Work', color: 'YELLOW', icon: 'briefcase' },
+    { name: 'Leisure', color: 'MAUVE', icon: 'game' }, { name: 'Other', color: 'GRAY', icon: 'star' },
   ],
 };
+const NAME_MAX = 12;
 
 const props = () => PropertiesService.getUserProperties();
 const readJSON = k => { const v = props().getProperty(k); return v ? JSON.parse(v) : null; };
@@ -33,7 +34,7 @@ function getInit() {
   return { settings: getSettings(), colors: COLORS, running, lastStopped };
 }
 
-const RESUME_WINDOW_MS = 30 * 60 * 1000;
+const RESUME_WINDOW_MS = 10 * 60 * 1000;
 
 function getSettings() {
   return readJSON('settings') || DEFAULTS;
@@ -43,7 +44,7 @@ function saveSettings(s) {
   const calendar = String(s.calendar || '').trim() || DEFAULTS.calendar;
   const seen = new Set();
   const cats = (s.cats || [])
-    .map(c => ({ name: String(c.name || '').trim(), color: COLORS[c.color] ? c.color : 'GRAY', icon: String(c.icon || '').replace(/[^a-z]/g, '').slice(0, 16) }))
+    .map(c => ({ name: String(c.name || '').trim().slice(0, NAME_MAX).trim(), color: COLORS[c.color] ? c.color : 'GRAY', icon: String(c.icon || '').replace(/[^a-z]/g, '').slice(0, 16) }))
     .filter(c => c.name && !seen.has(c.name.toLowerCase()) && seen.add(c.name.toLowerCase()));
   if (!cats.length) throw new Error('Add at least one category.');
   getCalendar_(calendar); // creates the calendar now if it doesn't exist

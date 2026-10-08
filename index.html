@@ -6,11 +6,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root { --paper:#F1F2F4; --surface:#FFFFFF; --ink:#16181C; --muted:#6A707A; --line:rgba(22,24,28,.09); --danger:#C5221F; color-scheme:light; }
+  :root { --sheen:rgba(255,255,255,.35); --onSel:var(--ink); --onSelMix:78%; --glow:34%; --paper:#F1F2F4; --surface:#FFFFFF; --ink:#16181C; --muted:#6A707A; --line:rgba(22,24,28,.09); --danger:#C5221F; color-scheme:light; }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --paper:#121316; --surface:#1D1F23; --ink:#F1F2F4; --muted:#8E95A0; --line:rgba(241,242,244,.08); --danger:#F28B82; color-scheme:dark; }
+    :root:not([data-theme="light"]) { --sheen:rgba(255,255,255,.05); --onSel:#FFFFFF; --onSelMix:62%; --glow:46%; --paper:#121316; --surface:#1D1F23; --ink:#F1F2F4; --muted:#8E95A0; --line:rgba(241,242,244,.08); --danger:#F28B82; color-scheme:dark; }
   }
-  :root[data-theme="dark"] { --paper:#121316; --surface:#1D1F23; --ink:#F1F2F4; --muted:#8E95A0; --line:rgba(241,242,244,.08); --danger:#F28B82; color-scheme:dark; }
+  :root[data-theme="dark"] { --sheen:rgba(255,255,255,.05); --onSel:#FFFFFF; --onSelMix:62%; --glow:46%; --paper:#121316; --surface:#1D1F23; --ink:#F1F2F4; --muted:#8E95A0; --line:rgba(241,242,244,.08); --danger:#F28B82; color-scheme:dark; }
 
   * { box-sizing:border-box; }
   html { -webkit-text-size-adjust:100%; height:100%; }
@@ -36,6 +36,7 @@
   #pager::-webkit-scrollbar { display:none; }
   .page { flex:0 0 100%; min-width:0; scroll-snap-align:start; scroll-snap-stop:always; overflow-y:auto; overflow-x:hidden; overscroll-behavior-y:contain; padding:12px 16px 40px; }
   #tabbar { flex:none; display:flex; border-top:1px solid var(--line); background:var(--paper); padding:6px 6px max(8px, env(safe-area-inset-bottom)); }
+  @media (pointer:coarse) { #tabbar { padding-bottom:max(26px, env(safe-area-inset-bottom)); } #msg { bottom:calc(104px + env(safe-area-inset-bottom)) !important; } }
   #tabbar { position:relative; }
   #tabInd {
     position:absolute; z-index:0; top:6px; left:6px; bottom:max(8px, env(safe-area-inset-bottom)); width:calc((100% - 12px) / 4);
@@ -214,15 +215,29 @@
   .zoom { display:flex; gap:6px; }
   .zoom button { width:34px; height:34px; border-radius:50%; background:var(--surface); border:1px solid var(--line); color:var(--muted); font-size:18px; line-height:1; }
   #tl { position:relative; touch-action:pan-x pan-y; }
-  #tl .axis { position:absolute; left:64px; top:0; bottom:0; width:2px; margin-left:-1px; border-radius:1px; background:color-mix(in srgb, var(--ink) 11%, transparent); }
-  #tl .hr { position:absolute; left:0; width:46px; text-align:right; font-size:11px; color:var(--muted); transform:translateY(-50%); font-variant-numeric:tabular-nums; }
-  #tl .now { position:absolute; left:52px; width:24px; height:2px; margin-top:-1px; border-radius:1px; background:var(--ink); opacity:.5; }
-  .blob { position:absolute; left:64px; width:16px; margin-left:-8px; padding:0; border-radius:999px; background:var(--cc); box-shadow:0 0 0 3px var(--paper); transition:transform .15s ease, height .25s ease, top .25s ease; }
+  /* centred timeline: times on the left, sessions on the line, names on the right */
+  .tsum { text-align:center; margin:2px 0 22px; }
+  #todayDate { font-size:14px; font-weight:600; color:var(--muted); }
+  #todayTotal { font-size:44px; font-weight:700; letter-spacing:-.04em; line-height:1.05; font-variant-numeric:tabular-nums; }
+  .tsub { font-size:13px; color:var(--muted); }
+  #today .zoom { position:sticky; top:8px; z-index:4; float:right; margin:-6px 0 0; padding:4px; gap:4px; border-radius:999px; background:color-mix(in srgb, var(--surface) 80%, transparent); border:1px solid var(--line); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px); box-shadow:0 6px 18px rgba(10,11,13,.08); }
+  #today .zoom button { width:36px; height:36px; border:0; background:transparent; color:var(--ink); font-size:20px; }
+  #tl { clear:both; }
+  #tl .axis { position:absolute; left:50%; top:0; bottom:0; width:3px; margin-left:-1.5px; border-radius:2px; background:color-mix(in srgb, var(--ink) 10%, transparent); }
+  #tl .tick { position:absolute; left:50%; width:10px; height:1px; margin-left:-5px; background:color-mix(in srgb, var(--ink) 22%, transparent); }
+  #tl .tick.major { width:18px; height:2px; margin:-.5px 0 0 -9px; background:color-mix(in srgb, var(--ink) 30%, transparent); }
+  #tl .hr { position:absolute; left:0; width:calc(50% - 22px); text-align:right; font-size:13px; font-weight:600; color:var(--muted); transform:translateY(-50%); font-variant-numeric:tabular-nums; }
+  #tl .hr.minor { font-size:11px; font-weight:500; opacity:.75; }
+  #tl .now { position:absolute; left:calc(50% - 26px); width:52px; height:2px; margin-top:-1px; border-radius:1px; background:var(--ink); }
+  #tl .nowlbl { position:absolute; left:0; width:calc(50% - 32px); text-align:right; transform:translateY(-50%); }
+  #tl .nowlbl span { display:inline-block; padding:3px 9px; border-radius:999px; background:var(--ink); color:var(--paper); font-size:11px; font-weight:700; }
+  .blob { position:absolute; left:50%; width:24px; margin-left:-12px; padding:0; border-radius:999px; background:var(--cc); box-shadow:0 0 0 3px var(--paper); transition:transform .15s ease, height .25s ease, top .25s ease; }
   .blob:hover { transform:scaleX(1.25); }
   .blob.live { animation:breathe 2.4s ease-in-out infinite; }
   @keyframes breathe { 50% { box-shadow:0 0 0 3px var(--paper), 0 0 0 9px color-mix(in srgb, var(--cc) 22%, transparent); } }
-  .blabel { position:absolute; left:86px; font-size:13px; font-weight:500; color:var(--muted); transform:translateY(-50%); white-space:nowrap; pointer-events:none; }
-  #peek { position:absolute; left:84px; right:0; z-index:2; padding:12px 14px; border-radius:18px; background:var(--surface); border:1px solid var(--line); box-shadow:0 14px 34px rgba(10,11,13,.14); animation:pop .18s ease-out; }
+  .blabel { position:absolute; left:calc(50% + 24px); font-size:15px; font-weight:600; color:var(--ink); transform:translateY(-50%); white-space:nowrap; pointer-events:none; }
+  .blabel small { display:block; font-size:12px; font-weight:500; color:var(--muted); font-variant-numeric:tabular-nums; }
+  #peek { position:absolute; left:calc(50% + 22px); right:0; z-index:2; padding:12px 14px; border-radius:18px; background:var(--surface); border:1px solid var(--line); box-shadow:0 14px 34px rgba(10,11,13,.14); animation:pop .18s ease-out; }
   @keyframes pop { from { transform:scale(.96); opacity:0; } }
   #peek .p1 { font-size:15px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #peek .p1 em { font-style:normal; font-weight:400; color:var(--muted); }
@@ -245,7 +260,7 @@
   :root:not([data-sport]) #catWrap::after {    /* the frosted band with hairline edges */
     background:
       radial-gradient(circle at 50% var(--cy), transparent calc(var(--Ro) - var(--T) + .5px), var(--line) calc(var(--Ro) - var(--T) + 1.5px), transparent calc(var(--Ro) - var(--T) + 2.5px), transparent calc(var(--Ro) - 2.5px), var(--line) calc(var(--Ro) - 1.5px), transparent calc(var(--Ro) - .5px)),
-      radial-gradient(circle at 50% var(--cy), transparent calc(var(--Ro) - 14px), rgba(255,255,255,.35) calc(var(--Ro) - 3px), transparent var(--Ro)),
+      radial-gradient(circle at 50% var(--cy), transparent calc(var(--Ro) - 14px), var(--sheen) calc(var(--Ro) - 3px), transparent var(--Ro)),
       color-mix(in srgb, var(--surface) 80%, transparent);
     -webkit-backdrop-filter:blur(20px) saturate(1.6); backdrop-filter:blur(20px) saturate(1.6);
   }
@@ -260,13 +275,18 @@
     flex-direction:column; align-items:center; justify-content:center; border:0; border-radius:999px; background:transparent;
     font-size:12.5px; font-weight:600; color:var(--ink); transition:color .25s ease;
   }
-  :root:not([data-sport]) .cat .lbl { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  :root:not([data-sport]) .cat.active { background:transparent; color:color-mix(in srgb, var(--cc) 78%, var(--ink)); }
+  :root:not([data-sport]) .cat .lbl { max-width:100%; overflow:hidden; white-space:nowrap; }
+  :root:not([data-sport]) .cat.active { background:transparent; color:color-mix(in srgb, var(--cc) var(--onSelMix), var(--onSel)); }
+  /* selection: a soft glow in the category colour behind the centre icon, plus a dot under its name */
   #catHL {
-    position:absolute; z-index:1; top:var(--hlTop, 10px); left:50%; height:66px; width:90px; margin-left:-45px; border-radius:999px; pointer-events:none; opacity:0;
-    background:color-mix(in srgb, var(--cc, #888) 17%, transparent);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 1px 2px rgba(10,11,13,.06);
-    transition:background-color .3s ease, opacity .2s ease;
+    position:absolute; z-index:1; top:calc(var(--hlTop, 10px) - 16px); left:50%; width:140px; height:98px; margin-left:-70px; pointer-events:none; opacity:0;
+    background:radial-gradient(closest-side, color-mix(in srgb, var(--cc, #888) var(--glow), transparent), color-mix(in srgb, var(--cc, #888) 10%, transparent) 62%, transparent);
+    -webkit-mask-image:var(--ring); mask-image:var(--ring);
+    transition:opacity .25s ease;
+  }
+  #catHL::after {
+    content:''; position:absolute; left:50%; bottom:13px; width:6px; height:6px; margin-left:-3px; border-radius:50%;
+    background:var(--cc, #888); box-shadow:0 0 8px color-mix(in srgb, var(--cc, #888) 70%, transparent);
   }
   #catHL.show { opacity:1; }
   :root[data-sport] #catHL { display:none; }
@@ -299,11 +319,12 @@
   :root[data-sport] .dial .hint, :root[data-sport] #fhint, :root[data-sport] #fmeta { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
   :root[data-sport] .dial .ring, :root[data-sport] .dial .track { stroke-width:4.6; }
   :root[data-sport] #fcat { font-family:var(--disp); font-style:italic; font-weight:800; font-size:clamp(80px, 25vw, 150px); line-height:.84; letter-spacing:0; text-transform:uppercase; }
-  :root[data-sport] .thead h2 #todayDate, :root[data-sport] .day h2, :root[data-sport] .card h3 { font-family:var(--disp); font-style:italic; font-weight:800; font-size:21px; letter-spacing:.02em; text-transform:uppercase; }
+  :root[data-sport] #todayTotal, :root[data-sport] .day h2, :root[data-sport] .card h3 { font-family:var(--disp); font-style:italic; font-weight:800; font-size:21px; letter-spacing:.02em; text-transform:uppercase; }
   :root[data-sport] label, :root[data-sport] #tabbar button { font-family:var(--disp); font-weight:700; letter-spacing:.07em; text-transform:uppercase; }
   :root[data-sport] label { font-size:14px; color:var(--muted); }
   :root[data-sport] #tabbar button { font-size:12px; }
-  :root[data-sport] .entry .dur, :root[data-sport] #startedAt, :root[data-sport] #resume b, :root[data-sport] .thead h2 span { font-family:var(--disp); font-weight:700; font-size:18px; }
+  :root[data-sport] .entry .dur, :root[data-sport] #startedAt, :root[data-sport] #resume b, :root[data-sport] #tl .hr { font-family:var(--disp); font-weight:700; font-size:15px; }
+  :root[data-sport] #todayTotal { font-size:56px; }
   :root[data-sport] .field, :root[data-sport] .pillbtn, :root[data-sport] #resume, :root[data-sport] #adjust button, :root[data-sport] .chip, :root[data-sport] #save { border-radius:12px; }
   :root[data-sport] .entry, :root[data-sport] .setrow, :root[data-sport] #peek { border-radius:14px; }
   :root[data-sport] .pillbtn, :root[data-sport] #resume, :root[data-sport] #adjust button { font-family:var(--disp); font-weight:700; font-size:16px; letter-spacing:.05em; text-transform:uppercase; }
@@ -357,10 +378,12 @@
   <section class="page" id="timeline">
     <div class="phead"><h1>Today</h1></div>
     <div id="today">
-      <div class="thead">
-        <h2><span id="todayDate"></span><span id="todayTotal"></span></h2>
-        <div class="zoom"><button id="zoomOut" aria-label="Zoom out">−</button><button id="zoomIn" aria-label="Zoom in">+</button></div>
+      <div class="tsum">
+        <div id="todayDate"></div>
+        <div id="todayTotal">0m</div>
+        <div class="tsub">logged today</div>
       </div>
+      <div class="zoom"><button id="zoomOut" aria-label="Zoom out">−</button><button id="zoomIn" aria-label="Zoom in">+</button></div>
       <div id="tl"></div>
     </div>
   </section>
@@ -590,7 +613,7 @@
     if (S) {
       $('cats').querySelectorAll('.cat').forEach(b => { b.style.transform = ''; b.style.opacity = ''; b.style.visibility = ''; });
       $('cats').scrollLeft = 0; arc = null;
-      layoutArc(); centerSelectedCat(false); curveCats(); requestAnimationFrame(placeCatHighlight);
+      layoutArc(); centerSelectedCat(false); curveCats(); requestAnimationFrame(placeCatHighlight); fitLabels();
     }
   }
   applySport();
@@ -757,6 +780,14 @@
   const HOLD_MS = 3000;
   let lastStopped = null, overlayAnim = false, resumeTick = 0;
 
+  function fitLabels() {
+    $('cats').querySelectorAll('.cat .lbl').forEach(l => {
+      l.style.fontSize = '';
+      if (sport) return;
+      let fs = parseFloat(getComputedStyle(l).fontSize);
+      while (l.scrollWidth > l.clientWidth + .5 && fs > 9) { fs -= .5; l.style.fontSize = fs + 'px'; }
+    });
+  }
   function renderCats() {
     $('cats').innerHTML = '';
     S.cats.forEach(c => {
@@ -768,6 +799,8 @@
       b.onclick = () => { if (selected !== c.name) { selected = c.name; renderTimer(); haptic(6); } centerSelectedCat(true); };
       $('cats').appendChild(b);
     });
+    requestAnimationFrame(fitLabels);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitLabels);
   }
 
   function holdAction() {
@@ -800,7 +833,7 @@
     $('hint').textContent = act === 'start' ? 'Hold to start'
       : act === 'switch' ? 'Hold to switch to ' + (selected || running.cat)
       : act === 'stop' ? (focusOpen() ? 'Hold 3s to stop' : 'Hold to stop · tap to focus') : 'then hold here';
-    const canResume = !running && lastStopped && Date.now() - lastStopped.end < 30 * 60000;
+    const canResume = !running && lastStopped && Date.now() - lastStopped.end < 10 * 60000;
     $('resume').classList.toggle('hidden', !canResume);
     clearInterval(resumeTick);
     if (canResume) {
@@ -809,7 +842,7 @@
       paint(r, lastStopped.color);
       r.children[1].textContent = 'Continue ' + lastStopped.cat;
       const upd = () => {
-        if (!lastStopped || Date.now() - lastStopped.end > 30 * 60000) { renderTimer(); return; }
+        if (!lastStopped || Date.now() - lastStopped.end > 10 * 60000) { renderTimer(); return; }
         r.lastChild.textContent = fmt(Date.now() - lastStopped.start);   // the session's clock never stopped
       };
       upd(); resumeTick = setInterval(upd, 1000);
@@ -1313,16 +1346,21 @@
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !F.classList.contains('hidden')) $('fmin').click(); });
 
   // ---------- today timeline ----------
-  const SCALES = [20, 30, 44, 64, 96, 140, 200];   // pixels per hour
-  let today = [], scale = 44, peekId = null;
-  try { const v = Number(localStorage.getItem('glog-scale')); if (v >= 16 && v <= 260) scale = v; } catch (e) {}
+  const SCALES = [30, 48, 72, 110, 170, 260, 400, 620];   // pixels per hour
+  const SMIN = 24, SMAX = 720;
+  let today = [], scale = 72, peekId = null, tlFrom = 0;
+  try { const v = Number(localStorage.getItem('glog-scale2')); if (v >= SMIN && v <= SMAX) scale = v; } catch (e) {}
+  // Zoom around the middle of the screen so the time you're looking at stays put.
   function setScale(v) {
-    scale = Math.max(16, Math.min(260, v));
-    try { localStorage.setItem('glog-scale', String(Math.round(scale))); } catch (e) {}
+    const pg = $('timeline'), tl = $('tl'), mid = pg.scrollTop + pg.clientHeight / 2 - tl.offsetTop;
+    const at = tlFrom + (mid - 14) / scale * 3600e3;
+    scale = Math.max(SMIN, Math.min(SMAX, v));
+    try { localStorage.setItem('glog-scale2', String(Math.round(scale))); } catch (e) {}
     renderToday();
+    if (tlFrom) pg.scrollTop = 14 + (at - tlFrom) / 3600e3 * scale + tl.offsetTop - pg.clientHeight / 2;
   }
-  $('zoomIn').onclick = () => setScale(SCALES.find(x => x > scale + 1) || 260);
-  $('zoomOut').onclick = () => setScale([...SCALES].reverse().find(x => x < scale - 1) || 16);
+  $('zoomIn').onclick = () => setScale(SCALES.find(x => x > scale + 1) || SMAX);
+  $('zoomOut').onclick = () => setScale([...SCALES].reverse().find(x => x < scale - 1) || SMIN);
 
   function loadToday() {
     server('history', [dayStart(Date.now()), Date.now() + 60000])
@@ -1335,27 +1373,33 @@
     const items = today.slice();
     if (running) items.push({ id: '__live', live: true, cat: running.cat, title: running.title, color: running.color, start: running.start, end: now });
     const total = items.reduce((t, e) => t + (e.end - e.start), 0);
-    $('todayTotal').textContent = total ? fmtDur(total) : '';
+    $('todayTotal').textContent = total ? fmtDur(total) : '0m';
     $('todayDate').textContent = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
     const d0 = dayStart(now);
     const first = items.length ? Math.min(...items.map(e => e.start)) : now;
     const from = Math.max(d0, Math.floor(Math.min(first, now - 2 * H) / H) * H);
     const to = Math.ceil((now + 1) / H) * H;
     const y = ms => PAD + (ms - from) / H * scale;
+    tlFrom = from;
     tl.innerHTML = '';
     tl.style.height = (y(to) + PAD) + 'px';
     const add = (cls, css, html) => { const el = document.createElement('div'); el.className = cls; Object.assign(el.style, css); if (html) el.textContent = html; tl.appendChild(el); return el; };
     add('axis', {});
-    const step = scale < 28 ? 3 : scale < 40 ? 2 : 1;
-    for (let t = from; t <= to; t += H) {
-      const hr = new Date(t).getHours();
-      if (hr % step) continue;
-      add('hr', { top: y(t) + 'px' }, new Date(t).toLocaleTimeString([], { hour: 'numeric' }));
+    // The more you zoom in, the finer the marks: hours → 30 → 15 → 10 → 5 minutes.
+    const ppm = scale / 60, STEPS = [5, 10, 15, 30, 60, 120, 180];
+    const lab = STEPS.find(m => m * ppm >= 30) || 180, tik = STEPS.find(m => m * ppm >= 10) || lab;
+    const nowY = y(now);
+    for (let t = from; t <= to; t += tik * 60000) {
+      const d = new Date(t), mins = d.getHours() * 60 + d.getMinutes(), onHour = d.getMinutes() === 0;
+      add('tick' + (onHour ? ' major' : ''), { top: y(t) + 'px' });
+      if (mins % lab || Math.abs(y(t) - nowY) < 14) continue;
+      add('hr' + (onHour ? '' : ' minor'), { top: y(t) + 'px' }, onHour ? d.toLocaleTimeString([], { hour: 'numeric' }) : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }));
     }
-    add('now', { top: y(now) + 'px' });
+    add('now', { top: nowY + 'px' });
+    add('nowlbl', { top: nowY + 'px' }).innerHTML = '<span>Now</span>';
     let lastLabel = -1e9;
     items.sort((a, b) => a.start - b.start).forEach(e => {
-      const top = y(e.start), h = Math.max(16, (e.end - e.start) / H * scale);
+      const top = y(e.start), h = Math.max(24, (e.end - e.start) / H * scale);
       const b = document.createElement('button');
       b.className = 'blob' + (e.live ? ' live' : ''); paint(b, e.color);
       Object.assign(b.style, { top: top + 'px', height: h + 'px' });
@@ -1363,7 +1407,10 @@
       b.onclick = ev => { ev.stopPropagation(); peekId = peekId === e.id ? null : e.id; renderToday(); };
       tl.appendChild(b);
       const mid = top + h / 2;
-      if (mid - lastLabel >= 18) { add('blabel', { top: mid + 'px' }, e.cat); lastLabel = mid; }
+      if (mid - lastLabel >= 22) {
+        const lb = add('blabel', { top: mid + 'px' }, e.cat); lastLabel = mid;
+        if (h >= 40) { const sm = document.createElement('small'); sm.textContent = fmtDur(e.end - e.start); lb.appendChild(sm); lastLabel = mid + 8; }
+      }
       if (peekId === e.id) {
         const p = document.createElement('div'); p.id = 'peek';
         p.style.top = Math.max(0, mid - 40) + 'px';
@@ -1413,7 +1460,7 @@
     ib.onclick = () => ipal.classList.toggle('hidden');
     const row = document.createElement('div'); row.className = 'row';
     const sw = document.createElement('button'); sw.className = 'swatch'; sw.innerHTML = '<i></i>'; sw.setAttribute('aria-label', 'Choose colour');
-    const name = document.createElement('input'); name.className = 'field'; name.value = c.name; name.placeholder = 'Category name';
+    const name = document.createElement('input'); name.className = 'field'; name.value = c.name.slice(0, 12); name.placeholder = 'Category name'; name.maxLength = 12;
     const del = document.createElement('button'); del.className = 'x'; del.textContent = '✕'; del.setAttribute('aria-label', 'Remove category');
     del.onclick = () => wrap.remove();
     const pal = document.createElement('div'); pal.className = 'palette hidden';
