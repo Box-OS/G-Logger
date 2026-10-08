@@ -302,6 +302,28 @@
   .ipal button svg { width:20px; height:20px; }
   .ipal button.on { color:var(--paper); background:var(--ink); border-color:transparent; }
 
+  /* notification banner after stopping */
+  #notif {
+    position:fixed; z-index:40; top:10px; left:50%; width:min(436px, calc(100% - 24px)); display:flex; align-items:center; gap:12px;
+    padding:12px 12px 12px 14px; border-radius:22px; background:color-mix(in srgb, var(--surface) 93%, transparent);
+    -webkit-backdrop-filter:blur(22px) saturate(1.6); backdrop-filter:blur(22px) saturate(1.6);
+    border:1px solid var(--line); box-shadow:0 18px 44px rgba(10,11,13,.18);
+    transform:translate(-50%, calc(-100% - 24px)); transition:transform .5s cubic-bezier(.3,1.3,.5,1); touch-action:none;
+  }
+  #notif.show { transform:translate(-50%, var(--ny, 0px)); }
+  #notif.drag { transition:none; }
+  .nico { width:38px; height:38px; flex:none; border-radius:50%; display:grid; place-items:center; background:var(--cc, #34C759); color:var(--on-cc, #fff); transform:scale(.6); transition:transform .45s cubic-bezier(.3,1.8,.5,1) .12s; }
+  #notif.show .nico { transform:scale(1); }
+  .nico svg { width:20px; height:20px; }
+  .nico path { stroke-dasharray:1; stroke-dashoffset:1; }
+  #notif.show .nico path { stroke-dashoffset:0; transition:stroke-dashoffset .4s ease .25s; }
+  .ntxt { flex:1; min-width:0; display:flex; flex-direction:column; line-height:1.25; }
+  .ntxt b { font-size:15px; font-weight:700; }
+  .ntxt span { font-size:14px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #notifUndo { height:34px; padding:0 14px; border-radius:999px; background:color-mix(in srgb, var(--ink) 8%, transparent); font-size:14px; font-weight:600; }
+  :root[data-sport] .ntxt b { font-family:var(--disp); font-style:italic; font-weight:800; font-size:17px; text-transform:uppercase; letter-spacing:.03em; }
+  :root[data-sport] #notif { border-radius:16px; }
+
   #hapticL { position:fixed; left:-200px; top:0; width:1px; height:1px; opacity:0; overflow:hidden; pointer-events:none; }
 
   /* ---------- settings switch ---------- */
@@ -431,6 +453,11 @@
   </nav>
 
   <div id="msg" role="status"></div>
+  <div id="notif" role="status" aria-live="polite">
+    <span class="nico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength="1"/></svg></span>
+    <span class="ntxt"><b>Logged</b><span id="notifMsg"></span></span>
+    <button id="notifUndo">Undo</button>
+  </div>
   <label id="hapticL" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
 
   <!-- ===== focus screen ===== -->
@@ -1097,11 +1124,40 @@
     running = null;
     lastStopped = prev ? Object.assign({}, prev, { end: Date.now() }) : null;
     renderTimer();
-    if (prev) say(`Saved ${fmtDur(Date.now() - prev.start)} of ${prev.cat}`, { label: 'Undo', fn: resume });
+    if (prev) notify(prev, Date.now() - prev.start, overlayAnim ? 1150 : 0);
     server('stop').then(() => loadToday())
       .catch(e => { if (my === seq) { running = prev; renderTimer(); } say("Couldn't save: " + e.message); });
   }
+  // "✓ You logged 20m of Study" banner that drops in from the top.
+  let notifT = 0, notifShowT = 0;
+  function notify(sess, ms, delay) {
+    const n = $('notif');
+    clearTimeout(notifT); clearTimeout(notifShowT);
+    n.classList.remove('show');
+    paint(n.querySelector('.nico'), sess.color);
+    $('notifMsg').textContent = `You logged ${fmtDur(ms)} of ${sess.cat}`;
+    notifShowT = setTimeout(() => {
+      n.style.setProperty('--ny', '0px'); void n.offsetWidth;
+      n.classList.add('show'); haptic(10);
+      notifT = setTimeout(hideNotif, 5200);
+    }, delay || 0);
+  }
+  function hideNotif() { clearTimeout(notifT); $('notif').classList.remove('show'); }
+  $('notifUndo').onclick = () => { hideNotif(); resume(); };
+  (() => {   // swipe the banner up to dismiss it
+    const n = $('notif'); let y0 = null;
+    n.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; y0 = e.clientY; n.classList.add('drag'); clearTimeout(notifT); });
+    n.addEventListener('pointermove', e => { if (y0 == null) return; n.style.setProperty('--ny', Math.min(0, e.clientY - y0) + 'px'); });
+    const up = e => {
+      if (y0 == null) return;
+      const dy = e.clientY - y0; y0 = null; n.classList.remove('drag');
+      if (dy < -24) hideNotif(); else { n.style.setProperty('--ny', '0px'); notifT = setTimeout(hideNotif, 3000); }
+    };
+    n.addEventListener('pointerup', up); n.addEventListener('pointercancel', up);
+  })();
+
   function resume() {
+    hideNotif();
     if (running || !lastStopped) return;
     const ls = lastStopped, my = ++seq;
     lastStopped = null;
