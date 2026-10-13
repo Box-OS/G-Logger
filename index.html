@@ -157,7 +157,12 @@
   /* ---------- settings ---------- */
   label { display:block; font-size:14px; font-weight:600; margin:6px 0 8px; }
   .hint { font-size:13px; color:var(--muted); margin:8px 4px 26px; }
-  .crow { margin-bottom:8px; }
+  .crow { margin-bottom:8px; position:relative; transition:transform .22s cubic-bezier(.2,.8,.2,1); }
+  .crow.lifting { z-index:5; transition:none; }
+  .crow.lifting .row { border-radius:28px; background:var(--paper); box-shadow:0 14px 34px rgba(10,11,13,.18); }
+  .grip { flex:none; width:24px; height:50px; margin-right:-4px; display:grid; place-items:center; color:var(--muted); touch-action:none; cursor:grab; opacity:.7; }
+  .grip svg { width:14px; height:20px; }
+  .crow.lifting .grip { cursor:grabbing; opacity:1; color:var(--ink); }
   .row { display:flex; gap:8px; align-items:center; }
   .row .field { flex:1; min-width:0; height:50px; }
   .swatch { width:50px; height:50px; flex:none; border-radius:50%; background:var(--surface); border:1px solid var(--line); display:grid; place-items:center; }
@@ -1724,8 +1729,51 @@
     });
     sw.onclick = () => { pal.classList.toggle('hidden'); ipal.classList.add('hidden'); };
     const ibOpen = ib.onclick; ib.onclick = () => { ibOpen(); pal.classList.add('hidden'); };
-    row.append(sw, ib, name, del); wrap.append(row, pal, ipal); sync(); syncIcon();
+    const grip = document.createElement('button'); grip.className = 'grip'; grip.setAttribute('aria-label', 'Drag to reorder');
+    grip.innerHTML = '<svg viewBox="0 0 14 20" fill="currentColor"><circle cx="4" cy="4" r="1.6"/><circle cx="10" cy="4" r="1.6"/><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="4" cy="16" r="1.6"/><circle cx="10" cy="16" r="1.6"/></svg>';
+    reorderable(grip, wrap);
+    row.append(grip, sw, ib, name, del); wrap.append(row, pal, ipal); sync(); syncIcon();
     return wrap;
+  }
+  // Hold the grip and drag a category up or down; the others slide out of the way.
+  function reorderable(grip, wrap) {
+    grip.addEventListener('pointerdown', e => {
+      if (e.button > 0) return;
+      e.preventDefault(); grip.setPointerCapture(e.pointerId);
+      document.querySelectorAll('#catRows .palette, #catRows .ipal').forEach(p => p.classList.add('hidden'));
+      const box = $('catRows'), rows = [...box.children], i0 = rows.indexOf(wrap);
+      const rects = rows.map(r => r.getBoundingClientRect()), y0 = e.clientY, gap = rects[i0].height + 8;
+      let to = i0, dy = 0;
+      wrap.classList.add('lifting'); haptic(10);
+      const mv = ev => {
+        dy = ev.clientY - y0;
+        dy = Math.max(rects[0].top - rects[i0].top - 8, Math.min(rects[rects.length - 1].bottom - rects[i0].bottom + 8, dy));
+        wrap.style.transform = `translateY(${dy}px) scale(1.02)`;
+        const c = rects[i0].top + rects[i0].height / 2 + dy;
+        let n = i0;
+        rects.forEach((r, i) => { const m = r.top + r.height / 2; if (i < i0 && c < m) n = Math.min(n, i); if (i > i0 && c > m) n = Math.max(n, i); });
+        if (n === to) return;
+        to = n; haptic(6);
+        rows.forEach((r, i) => {
+          if (r === wrap) return;
+          const s = i0 < to && i > i0 && i <= to ? -gap : to < i0 && i >= to && i < i0 ? gap : 0;
+          r.style.transform = s ? `translateY(${s}px)` : '';
+        });
+      };
+      const up = () => {
+        grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up);
+        const before = wrap.getBoundingClientRect().top;
+        rows.forEach(r => { r.style.transition = 'none'; r.style.transform = ''; });
+        if (to !== i0) { box.insertBefore(wrap, to > i0 ? rows[to].nextSibling : rows[to]); settingsDirty = true; }
+        const after = wrap.getBoundingClientRect().top;   // glide the dropped row into its slot
+        wrap.style.transform = `translateY(${before - after}px)`;
+        wrap.getBoundingClientRect();
+        wrap.classList.remove('lifting');
+        rows.forEach(r => r.style.transition = '');
+        wrap.style.transform = '';
+      };
+      grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', up); grip.addEventListener('pointercancel', up);
+    });
   }
   function fillSettings() {
     $('calName').value = S.calendar;
