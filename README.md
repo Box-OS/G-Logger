@@ -39,7 +39,8 @@ It only touches your own Google account: it creates a calendar named **Log** (ch
 | --- | --- |
 | `index.html` | The whole app (vanilla HTML/CSS/JS). A small client (`GLOG`) talks to the Calendar REST API for sessions, keeps settings in a Drive `appDataFolder` file, and tags the running session's event so every device sees the same timer. |
 | `worker/worker.js` | Cloudflare Worker for the OAuth 2.0 authorization-code flow. The refresh token lives in an AES-GCM-encrypted, HttpOnly cookie, so nothing is stored server-side; the page gets short-lived access tokens from `/auth/token`. |
-| `public/` | Web app manifest, icons and the privacy policy. |
+| `worker/push.js` | Web Push from scratch with Web Crypto: payload encryption (RFC 8291) and VAPID signing (RFC 8292). A cron trigger checks running timers every 10 minutes and sends a reminder when one runs too long. |
+| `public/` | Web app manifest, icons, the service worker that shows notifications, and the privacy policy. |
 | `wrangler.toml` | Serves `public/` and the worker from one origin, so the sign-in cookie is first-party. |
 | `.github/workflows/cloudflare.yml` | Publishes to Cloudflare on every push to `main`. |
 

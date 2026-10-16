@@ -376,6 +376,12 @@
   #signin small { display:block; margin-top:18px; font-size:12.5px; line-height:1.45; color:var(--muted); }
   .setrow { display:flex; align-items:center; gap:14px; padding:14px 16px; margin-bottom:24px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
   .setrow > div { flex:1; min-width:0; }
+  .setrow.remind { flex-direction:column; align-items:stretch; gap:12px; }
+  .setrow .rtop { display:flex; align-items:center; gap:14px; }
+  .setrow .rtop > div { flex:1; min-width:0; }
+  .seg { display:flex; gap:4px; padding:4px; border-radius:999px; background:color-mix(in srgb, var(--ink) 6%, transparent); }
+  .seg button { flex:1; height:34px; border-radius:999px; font-size:14px; font-weight:600; color:var(--muted); }
+  .seg button[aria-checked="true"] { background:var(--surface); color:var(--ink); box-shadow:0 1px 4px rgba(10,11,13,.12); }
   .setrow b { display:block; font-size:16px; font-weight:600; }
   .setrow span { font-size:13px; color:var(--muted); }
   .switch { position:relative; flex:none; width:52px; height:32px; border-radius:999px; background:color-mix(in srgb, var(--ink) 16%, transparent); transition:background-color .2s ease; }
@@ -491,6 +497,15 @@
     <div class="setrow">
       <div><b>24-hour time</b><span>Show 14:30 instead of 2:30 PM</span></div>
       <button id="h24Toggle" class="switch" role="switch" aria-checked="false" aria-label="24-hour time"><i></i></button>
+    </div>
+    <div class="setrow remind">
+      <div class="rtop">
+        <div><b>Long-timer reminder</b><span id="remindSub">A notification if a timer is still running after a while</span></div>
+        <button id="remindToggle" class="switch" role="switch" aria-checked="false" aria-label="Long-timer reminder"><i></i></button>
+      </div>
+      <div id="remindHours" class="seg hidden" role="radiogroup" aria-label="Remind me after">
+        <button data-h="1">1h</button><button data-h="2">2h</button><button data-h="3">3h</button><button data-h="4">4h</button><button data-h="6">6h</button>
+      </div>
     </div>
 
     <label for="calName">Log to calendar</label>
@@ -697,7 +712,52 @@ const GLOG = (() => {
 
   // ---- the running session is a real calendar event, tagged "running", so every device sees it ----
   let running = store.get('glog-running');
-  const setRunning = s => { running = s; store.set('glog-running', s); };
+  const setRunning = s => { running = s; store.set('glog-running', s); reportState(s); };
+  // Tell the reminder service when a timer starts or stops (it only keeps anything if you've
+  // turned reminders on, on one of your devices).
+  let reported;
+  function reportState(s) {
+    const key = s ? s.start + '|' + s.cat : '';
+    if (key === reported) return;
+    reported = key;
+    post('/api/push/state', { running: s ? { start: s.start, cat: s.cat, title: s.title || '' } : null }).catch(() => { reported = undefined; });
+  }
+  const post = (path, body) => fetch(path, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(async r => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || 'Request failed (' + r.status + ')'); return j; });
+  const unb64u = v => Uint8Array.from(atob(v.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+
+  // ---- long-timer reminders (Web Push) ----
+  const PUSH = {
+    supported: () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window,
+    installed: () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true,
+    async current() {
+      if (!PUSH.supported()) return null;
+      const reg = await navigator.serviceWorker.getRegistration();
+      return reg ? reg.pushManager.getSubscription() : null;
+    },
+    // Must be called straight from a tap: iPhone only shows the permission prompt then.
+    async enable(hours) {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') throw new Error('Notifications are off for G<Logger. Turn them on in your phone\'s Settings → Notifications.');
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready;
+      const { publicKey } = await (await fetch('/api/push/key')).json();
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: unb64u(publicKey) });
+      await post('/api/push/subscribe', { subscription: sub.toJSON(), hours, running: running ? { start: running.start, cat: running.cat, title: running.title } : null });
+    },
+    async setHours(hours) {
+      const sub = await PUSH.current();
+      if (sub) await post('/api/push/subscribe', { subscription: sub.toJSON(), hours });
+    },
+    async disable() {
+      const sub = await PUSH.current();
+      if (!sub) return;
+      await post('/api/push/unsubscribe', { endpoint: sub.endpoint }).catch(() => {});
+      await sub.unsubscribe();
+    },
+  };
+  if (PUSH.supported()) navigator.serviceWorker.register('/sw.js').catch(() => {});
   const lastStopped = () => { const l = store.get('glog-last'); return l && Date.now() - l.end < RESUME_MS ? l : null; };
   async function findRunning() {
     return onCal(async cal => {
@@ -834,6 +894,7 @@ const GLOG = (() => {
     // What we knew last time, so the app can draw instantly while it checks with Google.
     cachedInit: () => (settings ? init() : null),
     email: () => email,
+    push: PUSH,
     signIn: () => { location.href = '/auth/login'; },
     async signOut() {
       await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
@@ -1040,6 +1101,38 @@ const GLOG = (() => {
     histShown = ''; renderTimer(); if (hist.length) showHistory(); if (S) renderToday();
     say(h24 ? '24-hour time' : '12-hour time');
   };
+  // Long-timer reminder: a push notification if a timer has been running for N hours.
+  (() => {
+    const P = GLOG.push, T = $('remindToggle'), seg = $('remindHours');
+    let hours = 2;
+    try { hours = Number(localStorage.getItem('glog-remind-hours')) || 2; } catch (e) {}
+    const paintSeg = () => seg.querySelectorAll('button').forEach(b => { b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', String(Number(b.dataset.h) === hours)); });
+    const setOn = on => { T.setAttribute('aria-checked', String(on)); seg.classList.toggle('hidden', !on); paintSeg(); };
+    if (!P.supported()) {
+      const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      $('remindSub').textContent = ios && !P.installed() ? 'Add G<Logger to your Home Screen (Share → Add to Home Screen) to turn this on.' : "This browser can't show notifications.";
+      T.disabled = true;
+    } else {
+      P.current().then(sub => setOn(!!sub && Notification.permission === 'granted')).catch(() => {});
+    }
+    T.onclick = () => {
+      if (T.getAttribute('aria-checked') === 'true') {
+        setOn(false); P.disable().then(() => say('Reminders off')).catch(() => {});
+        return;
+      }
+      T.disabled = true;
+      P.enable(hours)   // asks for permission right away, while this tap still counts
+        .then(() => { setOn(true); say(`You'll get a reminder after ${hours}h`); })
+        .catch(e => { setOn(false); say(e.message); })
+        .finally(() => { T.disabled = false; });
+    };
+    seg.onclick = e => {
+      const b = e.target.closest('button'); if (!b) return;
+      hours = Number(b.dataset.h); paintSeg(); haptic(6);
+      try { localStorage.setItem('glog-remind-hours', String(hours)); } catch (err) {}
+      P.setHours(hours).then(() => say(`Reminder after ${hours}h`)).catch(err => say("Couldn't update: " + err.message));
+    };
+  })();
   // The highlight stays in the middle; the wheel turns underneath it.
   function placeCatHighlight() {
     const hl = $('catHL'); if (!hl) return;

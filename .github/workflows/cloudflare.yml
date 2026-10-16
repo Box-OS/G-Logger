@@ -30,6 +30,24 @@ jobs:
       - name: Put the app page next to its icons
         if: env.READY == 'true'
         run: cp index.html public/index.html
+      - name: Make sure the reminder storage (Workers KV) exists
+        if: env.READY == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          npm install --silent --no-save wrangler@4
+          find_id() { npx wrangler kv namespace list 2>/dev/null | node -e '
+            let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
+              const list = JSON.parse(s.slice(s.indexOf("[")));
+              const ns = list.find(n => n.title === "g-logger-push" || n.title.endsWith("-g-logger-push"));
+              console.log(ns ? ns.id : "");
+            });'; }
+          ID=$(find_id)
+          if [ -z "$ID" ]; then npx wrangler kv namespace create g-logger-push; ID=$(find_id); fi
+          test -n "$ID"
+          printf '\n[[kv_namespaces]]\nbinding = "KV"\nid = "%s"\n' "$ID" >> wrangler.toml
+          tail -4 wrangler.toml
       - uses: cloudflare/wrangler-action@v3
         if: env.READY == 'true'
         with:
