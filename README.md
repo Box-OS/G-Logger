@@ -45,6 +45,20 @@ The app runs as *you*: it only ever touches your own calendar, and creates a cal
 
 State (settings and the currently running timer) is stored per user in `PropertiesService`, so the timer survives closing the tab or switching devices, and every user's data stays separate.
 
+## Standalone version
+
+A standalone build is in progress: the same page hosted on Cloudflare as an installable web app, signing in with
+Google OAuth and calling the Calendar API directly instead of going through Apps Script.
+
+| File | Role |
+| --- | --- |
+| `index.html` | Detects where it's running. Outside Apps Script, a small client (`GLOG`) implements the same calls as `Code.gs` against the Calendar REST API, keeps settings in a private Drive app-data file, and tags the running session's calendar event so every device sees it. |
+| `worker/worker.js` | Cloudflare Worker for the OAuth 2.0 authorization-code flow. Keeps the refresh token in an AES-GCM-encrypted HttpOnly cookie, so there is no database, and hands the page short-lived access tokens. |
+| `public/` | Web app manifest and icons for installing it on a home screen. |
+| `.github/workflows/cloudflare.yml` | Publishes the page and worker to Cloudflare on every push. |
+
+Setup steps are in [SETUP.md](SETUP.md).
+
 ## Tech
 
-Google Apps Script (V8), CalendarApp, PropertiesService, HtmlService, vanilla JavaScript, clasp and GitHub Actions.
+Google Apps Script (V8), CalendarApp, PropertiesService, HtmlService, vanilla JavaScript, clasp and GitHub Actions. Standalone: Google Calendar and Drive REST APIs, OAuth 2.0, Cloudflare Workers, Web App Manifest.

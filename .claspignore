@@ -1,0 +1,5 @@
+# Only these files go to Apps Script; everything else (the standalone app, worker, workflows) stays out.
+**/**
+!Code.gs
+!index.html
+!appsscript.json

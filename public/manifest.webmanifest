@@ -1,0 +1,15 @@
+{
+  "name": "G<Logger",
+  "short_name": "G<Logger",
+  "description": "Log your time to Google Calendar with a hold-to-start timer.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F1F2F4",
+  "theme_color": "#F1F2F4",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

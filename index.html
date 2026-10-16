@@ -2,6 +2,17 @@
 <html>
 <head>
 <base target="_top">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>G&lt;Logger</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<link rel="icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="G&lt;Logger">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#F1F2F4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121316" media="(prefers-color-scheme: dark)">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -28,8 +39,8 @@
   button:disabled { opacity:.45; cursor:default; transform:none; }
   :focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
 
-  body { position:relative; }
-  header { position:absolute; top:0; right:0; z-index:6; height:60px; padding:12px 16px 0; }
+  body { position:relative; padding-top:env(safe-area-inset-top); }
+  header { position:absolute; top:env(safe-area-inset-top); right:0; z-index:6; height:60px; padding:12px 16px 0; }
   .phead { display:flex; align-items:center; height:48px; margin:0 0 6px; }
   body.minimized .phead h1 { padding-left:56px; transition:padding-left .3s ease; }
   #pager { flex:1; min-height:0; display:flex; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scrollbar-width:none; overscroll-behavior-x:contain; -webkit-overflow-scrolling:touch; }
@@ -342,6 +353,16 @@
   #hapticL { position:fixed; left:-200px; top:0; width:1px; height:1px; opacity:0; overflow:hidden; pointer-events:none; }
 
   /* ---------- settings switch ---------- */
+  #signin { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:24px; background:var(--paper); }
+  #signin.hidden { display:none; }
+  #signin .sbox { width:100%; max-width:340px; text-align:center; }
+  #signin .slogo { width:96px; height:96px; margin:0 auto 22px; border-radius:50%; background:var(--surface); box-shadow:inset 0 0 0 6px var(--ink); position:relative; overflow:hidden; }
+  #signin .slogo i { position:absolute; left:0; right:0; bottom:0; height:42%; background:var(--ink); }
+  #signin h1 { margin:0 0 8px; font-size:34px; font-weight:800; letter-spacing:-.04em; }
+  #signin p { margin:0 0 28px; color:var(--muted); font-size:16px; line-height:1.45; }
+  #signin .pillbtn { width:100%; height:54px; display:flex; align-items:center; justify-content:center; gap:10px; font-size:16px; }
+  #signin .pillbtn svg { width:20px; height:20px; padding:2px; border-radius:50%; background:#fff; }
+  #signin small { display:block; margin-top:18px; font-size:12.5px; line-height:1.45; color:var(--muted); }
   .setrow { display:flex; align-items:center; gap:14px; padding:14px 16px; margin-bottom:24px; border-radius:20px; background:var(--surface); border:1px solid var(--line); }
   .setrow > div { flex:1; min-width:0; }
   .setrow b { display:block; font-size:16px; font-weight:600; }
@@ -388,6 +409,15 @@
 </style>
 </head>
 <body>
+<div id="signin" class="hidden" role="dialog" aria-modal="true" aria-labelledby="signinTitle">
+  <div class="sbox">
+    <div class="slogo" aria-hidden="true"><i></i></div>
+    <h1 id="signinTitle">G&lt;Logger</h1>
+    <p>Hold to start. Hold to stop. Every session lands in your Google Calendar.</p>
+    <button id="signinGo" class="pillbtn primary"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h6a5 5 0 0 1-2.2 3.3v2.7h3.5c2.1-1.9 3.3-4.7 3.3-8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1-3.8 1-2.9 0-5.4-2-6.3-4.6H2.1v2.8A11 11 0 0 0 12 23z"/><path fill="#FBBC05" d="M5.7 14c-.2-.7-.4-1.4-.4-2s.2-1.4.4-2V7.2H2.1A11 11 0 0 0 1 12c0 1.8.4 3.4 1.1 4.8L5.7 14z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1A11 11 0 0 0 2.1 7.2L5.7 10C6.6 7.4 9.1 5.4 12 5.4z"/></svg>Continue with Google</button>
+    <small id="signinMsg">Your log stays in your own calendar. Settings are kept in a private file in your Google Drive that only this app can see.</small>
+  </div>
+</div>
   <header>
     <button class="round" id="theme" aria-label="Switch light or dark mode"></button>
   </header>
@@ -460,6 +490,10 @@
     <button id="save" class="pillbtn primary">Save settings</button>
     <button id="back" class="ghost">Discard changes</button>
     <div id="setMsg" class="hint" style="text-align:center"></div>
+    <div id="account" class="setrow hidden" style="margin-top:18px">
+      <div><b>Google account</b><span id="accountEmail"></span></div>
+      <button id="signout" class="pillbtn soft">Sign out</button>
+    </div>
   </section>
   </div>
 
@@ -526,6 +560,265 @@
   </div>
 
 <script>
+// ===== Standalone mode =====
+// When this page is served on its own (not inside Google Apps Script), it talks to Google directly:
+// Calendar API for your log, a private Drive "app data" file for settings, and a tiny sign-in
+// service (/auth/*, see worker/worker.js) that hands out short-lived access tokens.
+// It answers the same calls as Code.gs, so the rest of the app doesn't care which one it's using.
+const GLOG = (() => {
+  if (window.google && google.script) return null;   // running inside Apps Script: use Code.gs
+  const COLORS = {
+    PALE_BLUE: ['Lavender', '#7986cb'], PALE_GREEN: ['Sage', '#33b679'], MAUVE: ['Grape', '#8e24aa'],
+    PALE_RED: ['Flamingo', '#e67c73'], YELLOW: ['Banana', '#f6bf26'], ORANGE: ['Tangerine', '#f4511e'],
+    CYAN: ['Peacock', '#039be5'], GRAY: ['Graphite', '#616161'], BLUE: ['Blueberry', '#3f51b5'],
+    GREEN: ['Basil', '#0b8043'], RED: ['Tomato', '#d50000'],
+  };
+  const CID = { PALE_BLUE: '1', PALE_GREEN: '2', MAUVE: '3', PALE_RED: '4', YELLOW: '5', ORANGE: '6', CYAN: '7', GRAY: '8', BLUE: '9', GREEN: '10', RED: '11' };
+  const DEFAULTS = {
+    calendar: 'Log',
+    cats: [
+      { name: 'School', color: 'GREEN', icon: 'book' }, { name: 'Study', color: 'BLUE', icon: 'target' },
+      { name: 'Gym', color: 'RED', icon: 'dumbbell' }, { name: 'Work', color: 'YELLOW', icon: 'briefcase' },
+      { name: 'Leisure', color: 'MAUVE', icon: 'game' }, { name: 'Other', color: 'GRAY', icon: 'star' },
+    ],
+  };
+  const NAME_MAX = 12, RESUME_MS = 10 * 60e3, MIN = 60e3;
+  const CAL = 'https://www.googleapis.com/calendar/v3', DRIVE = 'https://www.googleapis.com/drive/v3', UP = 'https://www.googleapis.com/upload/drive/v3';
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+    set(k, v) { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+  class AuthError extends Error {}
+
+  // ---- access token (from the sign-in service; lives about an hour, refreshed as needed) ----
+  let tok = null, tokExp = 0, tokP = null, email = store.get('glog-email');
+  function token(force) {
+    if (!force && tok && Date.now() < tokExp - MIN) return Promise.resolve(tok);
+    if (!tokP) tokP = fetch('/auth/token', { method: 'POST', credentials: 'same-origin' })
+      .then(async r => {
+        if (r.status === 401) throw new AuthError('Sign in to continue.');
+        if (!r.ok) throw new Error('The sign-in service is unavailable right now.');
+        const j = await r.json();
+        tok = j.access_token; tokExp = Date.now() + j.expires_in * 1000;
+        if (j.email) { email = j.email; store.set('glog-email', email); }
+        return tok;
+      })
+      .finally(() => { tokP = null; });
+    return tokP;
+  }
+  // One Google API request; retries once with a fresh token if the old one was rejected.
+  async function g(method, url, body, headers) {
+    for (let i = 0; i < 2; i++) {
+      const t = await token(i > 0);
+      const h = Object.assign({ Authorization: 'Bearer ' + t }, body !== undefined && typeof body !== 'string' ? { 'Content-Type': 'application/json' } : {}, headers || {});
+      const r = await fetch(url, { method, headers: h, body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body) });
+      if (r.status === 401 && i === 0) continue;
+      const txt = await r.text();
+      let j = null; try { j = txt ? JSON.parse(txt) : null; } catch (e) {}
+      if (!r.ok) {
+        const e = new Error((j && j.error && j.error.message) || 'Google returned an error (' + r.status + ').');
+        e.status = r.status; throw e;
+      }
+      return j;
+    }
+  }
+  const qs = o => Object.entries(o).filter(([, v]) => v != null).map(([k, v]) => encodeURIComponent(k) + '=' + encodeURIComponent(v)).join('&');
+
+  // ---- settings: a private JSON file in your Drive's hidden app-data folder ----
+  let settings = store.get('glog-settings'), fileId = store.get('glog-settings-id');
+  async function loadSettings() {
+    const r = await g('GET', DRIVE + '/files?' + qs({ spaces: 'appDataFolder', q: "name='settings.json'", fields: 'files(id)' }));
+    const f = r.files && r.files[0];
+    fileId = f ? f.id : null;
+    settings = f ? await g('GET', DRIVE + '/files/' + f.id + '?alt=media') : (settings || DEFAULTS);
+    store.set('glog-settings', settings); store.set('glog-settings-id', fileId);
+    return settings;
+  }
+  async function writeSettings(s) {
+    const b = 'glog' + Math.random().toString(36).slice(2), meta = fileId ? {} : { name: 'settings.json', parents: ['appDataFolder'] };
+    const body = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(s)}\r\n--${b}--`;
+    const r = await g(fileId ? 'PATCH' : 'POST', UP + '/files' + (fileId ? '/' + fileId : '') + '?uploadType=multipart&fields=id', body, { 'Content-Type': 'multipart/related; boundary=' + b });
+    fileId = r.id; settings = s;
+    store.set('glog-settings', s); store.set('glog-settings-id', fileId);
+  }
+  const S = () => settings || DEFAULTS;
+
+  // ---- which calendar: "primary", or one of yours by name (created if missing) ----
+  async function calId(name) {
+    name = name || S().calendar;
+    if (name.toLowerCase() === 'primary') return 'primary';
+    const k = 'glog-cal:' + name, hit = store.get(k);
+    if (hit) return hit;
+    let page = null;
+    do {
+      const r = await g('GET', CAL + '/users/me/calendarList?' + qs({ minAccessRole: 'owner', maxResults: 250, pageToken: page }));
+      const c = (r.items || []).find(x => x.summary === name);
+      if (c) { store.set(k, c.id); return c.id; }
+      page = r.nextPageToken;
+    } while (page);
+    const made = await g('POST', CAL + '/calendars', { summary: name, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+    store.set(k, made.id); return made.id;
+  }
+  // Runs fn(calendarId); if that calendar was deleted since we last looked, finds/creates it again.
+  async function onCal(fn) {
+    const c = await calId();
+    try { return await fn(c); } catch (e) {
+      if (e.status !== 404 || c === 'primary') throw e;
+      store.set('glog-cal:' + S().calendar, null);
+      return fn(await calId());
+    }
+  }
+  const evUrl = (cal, id) => CAL + '/calendars/' + encodeURIComponent(cal) + '/events' + (id ? '/' + encodeURIComponent(id) : '');
+  const iso = ms => new Date(ms).toISOString();
+  const label = (cat, title) => (title ? `${cat} · ${title}` : cat);
+  const priv = e => (e.extendedProperties && e.extendedProperties.private) || {};
+  function parse(e, cal) {
+    const p = priv(e), t = String(e.summary || '').replace(/^⏱\s*/, ''), i = t.indexOf(' · ');
+    const cat = p.cat || (i >= 0 ? t.slice(0, i) : t), title = p.title != null ? p.title : (i >= 0 ? t.slice(i + 3) : '');
+    const known = S().cats.find(c => c.name === cat);
+    const color = known ? known.color : Object.keys(CID).find(k => CID[k] === e.colorId) || 'GRAY';
+    return { calId: cal, id: e.id, cat, title, color, start: Date.parse(e.start.dateTime), end: Date.parse(e.end.dateTime) };
+  }
+  const marks = (state, s) => ({ private: { glog: state, cat: s.cat, title: s.title || '' } });
+
+  // ---- the running session is a real calendar event, tagged "running", so every device sees it ----
+  let running = store.get('glog-running');
+  const setRunning = s => { running = s; store.set('glog-running', s); };
+  const lastStopped = () => { const l = store.get('glog-last'); return l && Date.now() - l.end < RESUME_MS ? l : null; };
+  async function findRunning() {
+    return onCal(async cal => {
+      const r = await g('GET', evUrl(cal) + '?' + qs({ privateExtendedProperty: 'glog=running', maxResults: 5, timeMin: iso(Date.now() - 7 * 864e5) }));
+      const e = (r.items || []).filter(x => x.status !== 'cancelled' && x.start && x.start.dateTime)[0];
+      const s = e ? parse(e, cal) : null;
+      if (s) delete s.end;
+      setRunning(s);
+      return s;
+    });
+  }
+  const init = () => ({ settings: S(), colors: COLORS, running, lastStopped: running ? null : lastStopped() });
+
+  const API = {
+    async getInit() {
+      await loadSettings();
+      await findRunning();
+      return init();
+    },
+    async saveSettings(s) {
+      const calendar = String(s.calendar || '').trim() || DEFAULTS.calendar, seen = new Set();
+      const cats = (s.cats || [])
+        .map(c => ({ name: String(c.name || '').trim().slice(0, NAME_MAX).trim(), color: COLORS[c.color] ? c.color : 'GRAY', icon: String(c.icon || '').replace(/[^a-z]/g, '').slice(0, 16) }))
+        .filter(c => c.name && !seen.has(c.name.toLowerCase()) && seen.add(c.name.toLowerCase()));
+      if (!cats.length) throw new Error('Add at least one category.');
+      await calId(calendar);   // creates the calendar now if it doesn't exist
+      if (calendar !== S().calendar && running) throw new Error('Stop the running log before switching calendars.');
+      await writeSettings({ calendar, cats });
+      return init();
+    },
+    async start(catName, title, startMs) {
+      if (await findRunning()) throw new Error('A log is already running. Stop it first.');
+      store.set('glog-last', null);
+      const cat = S().cats.find(c => c.name === catName);
+      if (!cat) throw new Error('Unknown category: ' + catName);
+      const t = Date.now(), want = Number(startMs);
+      const at = want && Math.abs(t - want) < 5 * MIN ? Math.min(t, want) : t;
+      const s0 = { cat: cat.name, title: title || '' };
+      return onCal(async cal => {
+        const e = await g('POST', evUrl(cal), {
+          summary: '⏱ ' + label(cat.name, title), start: { dateTime: iso(at) }, end: { dateTime: iso(at + MIN) },
+          colorId: CID[cat.color], extendedProperties: marks('running', s0),
+        });
+        const s = { calId: cal, id: e.id, cat: cat.name, color: cat.color, title: title || '', start: at };
+        setRunning(s); return s;
+      });
+    },
+    async stop() {   // sets the real end time and removes the ⏱ marker
+      const s = await findRunning();
+      if (!s) return null;
+      const end = Date.now();
+      await g('PATCH', evUrl(s.calId, s.id), { summary: label(s.cat, s.title), end: { dateTime: iso(Math.max(end, s.start + MIN)) }, extendedProperties: marks('done', s) })
+        .catch(e => { if (e.status !== 404 && e.status !== 410) throw e; });
+      store.set('glog-last', Object.assign({}, s, { end })); setRunning(null);
+      return null;
+    },
+    async discardLastStopped() {   // Undo: the session that was just saved never happened
+      const l = store.get('glog-last');
+      if (l) await API.deleteEntry(l.id, l.calId);
+      store.set('glog-last', null); return null;
+    },
+    async dismissResume() { store.set('glog-last', null); return null; },
+    async resume() {   // the same event keeps running from its original start
+      if (running || await findRunning()) throw new Error('A timer is already running.');
+      const l = lastStopped();
+      if (!l) throw new Error('There is no recent session to resume.');
+      const s = Object.assign({}, l); delete s.end;
+      await g('PATCH', evUrl(s.calId, s.id), { summary: '⏱ ' + label(s.cat, s.title), end: { dateTime: iso(Math.max(Date.now(), s.start + MIN)) }, extendedProperties: marks('running', s) })
+        .catch(e => { throw e.status === 404 || e.status === 410 ? new Error('That session is no longer in your calendar.') : e; });
+      setRunning(s); store.set('glog-last', null);
+      return s;
+    },
+    async setStart(ms) {   // move the running timer's start (for when you forgot to start it)
+      const s = await findRunning();
+      if (!s) throw new Error('No timer is running.');
+      const now = Date.now(); ms = Math.min(Number(ms), now);
+      if (!(ms > now - 24 * 3600e3)) throw new Error('The start time has to be within the last 24 hours.');
+      await g('PATCH', evUrl(s.calId, s.id), { start: { dateTime: iso(ms) }, end: { dateTime: iso(Math.max(now, ms + MIN)) } });
+      s.start = ms; setRunning(s);
+      return s;
+    },
+    async cancel() {   // accidental start: delete the event
+      const s = await findRunning();
+      if (s) await API.deleteEntry(s.id, s.calId);
+      setRunning(null); store.set('glog-last', null);
+      return null;
+    },
+    async history(fromMs, toMs) {
+      return onCal(async cal => {
+        const out = []; let page = null;
+        do {
+          const r = await g('GET', evUrl(cal) + '?' + qs({ timeMin: iso(fromMs), timeMax: iso(toMs), singleEvents: true, orderBy: 'startTime', maxResults: 2500, pageToken: page }));
+          (r.items || []).forEach(e => { if (e.start && e.start.dateTime && e.status !== 'cancelled' && priv(e).glog !== 'running') out.push(parse(e, cal)); });
+          page = r.nextPageToken;
+        } while (page);
+        return out;
+      });
+    },
+    async saveEntry(x) {   // create (no id) or update (id) a logged session
+      const cat = S().cats.find(c => c.name === x.cat);
+      if (!cat) throw new Error('Unknown category: ' + x.cat);
+      const start = Number(x.start), end = Number(x.end);
+      if (!(end > start)) throw new Error('End time must be after the start time.');
+      const title = String(x.title || '').trim();
+      const body = { summary: label(cat.name, title), start: { dateTime: iso(start) }, end: { dateTime: iso(end) }, colorId: CID[cat.color], extendedProperties: marks('done', { cat: cat.name, title }) };
+      return onCal(async cal => {
+        const e = x.id
+          ? await g('PATCH', evUrl(cal, x.id), body).catch(e => { throw e.status === 404 ? new Error('That entry no longer exists in your calendar.') : e; })
+          : await g('POST', evUrl(cal), body);
+        return e.id;
+      });
+    },
+    async deleteEntry(id, cal) {
+      cal = cal || await calId();
+      await g('DELETE', evUrl(cal, id)).catch(e => { if (e.status !== 404 && e.status !== 410) throw e; });
+      return null;
+    },
+  };
+
+  return {
+    AuthError,
+    call: (fn, args) => API[fn](...(args || [])),
+    // What we knew last time, so the app can draw instantly while it checks with Google.
+    cachedInit: () => (settings ? init() : null),
+    email: () => email,
+    signIn: () => { location.href = '/auth/login'; },
+    async signOut() {
+      await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+      try { Object.keys(localStorage).filter(k => k.startsWith('glog-') && k !== 'glog-theme').forEach(k => localStorage.removeItem(k)); } catch (e) {}
+      location.replace('/');
+    },
+  };
+})();
+</script>
+<script>
   let S = null, COLORS = {}, running = null, tick = null, seq = 0, view = 'timer';
   const $ = id => document.getElementById(id);
   const hex = c => (COLORS[c] || ['', '#888888'])[1];
@@ -563,10 +856,16 @@
   // Server calls run one at a time, in order, while the UI updates instantly.
   let queue = Promise.resolve();
   function server(fn, args) {
-    const p = queue.then(() => new Promise((ok, fail) =>
+    const p = queue.then(() => GLOG ? GLOG.call(fn, args) : new Promise((ok, fail) =>
       google.script.run.withSuccessHandler(ok).withFailureHandler(fail)[fn](...(args || []))));
     queue = p.catch(() => {});
-    return p;
+    return GLOG ? p.catch(e => { if (e instanceof GLOG.AuthError) showSignin(); throw e; }) : p;
+  }
+  // Standalone sign-in screen (only ever shown when not running inside Apps Script).
+  function showSignin(msg) {
+    const el = $('signin'); if (!el) return;
+    if (msg) $('signinMsg').textContent = msg;
+    el.classList.remove('hidden');
   }
 
   // ---------- light / dark ----------
@@ -1796,9 +2095,34 @@
   };
 
   // ---------- boot ----------
+  function applyInit(init) {
+    S = init.settings; COLORS = init.colors; running = init.running; lastStopped = init.lastStopped || null;
+    selected = running ? running.cat : (selected && init.settings.cats.some(c => c.name === selected) ? selected : (init.settings.cats[0] || {}).name || null);
+    renderCats(); renderTimer(); if (!settingsDirty) fillSettings(); applySport();
+  }
+  const cached = GLOG && GLOG.cachedInit();
+  if (cached) applyInit(cached);   // draw what we knew last time straight away, then check with Google
+  const bootSeq = seq;
+  if (GLOG) {
+    $('account').classList.remove('hidden');
+    $('accountEmail').textContent = GLOG.email() || 'your Google account';
+    $('signout').onclick = () => { $('signout').disabled = true; GLOG.signOut(); };
+    $('signinGo').onclick = () => GLOG.signIn();
+    const why = new URLSearchParams(location.search).get('signin');
+    if (why) { history.replaceState(null, '', '/'); showSignin(why === 'access_denied' ? 'G<Logger needs access to your calendar to work.' : 'Sign-in didn\'t finish. Try again.'); }
+  }
   server('getInit')
-    .then(init => { S = init.settings; COLORS = init.colors; running = init.running; lastStopped = init.lastStopped || null; selected = running ? running.cat : (init.settings.cats[0] || {}).name || null; renderCats(); renderTimer(); loadToday(); fillSettings(); applySport(); loadHistory(); })
-    .catch(e => { $('what').textContent = "Couldn't load"; $('sub').textContent = e.message; });
+    .then(init => {
+      if (seq !== bootSeq) { COLORS = init.colors; S = init.settings; renderCats(); return; }   // you already started/stopped something; keep that
+      applyInit(init);
+      if (GLOG) $('accountEmail').textContent = GLOG.email() || 'your Google account';
+      loadToday(); loadHistory();
+    })
+    .catch(e => {
+      if (GLOG && e instanceof GLOG.AuthError) return;   // the sign-in screen is showing
+      if (!cached) { $('what').textContent = "Couldn't load"; $('sub').textContent = e.message; }
+      else say("Couldn't reach Google: " + e.message);
+    });
 </script>
 </body>
 </html>

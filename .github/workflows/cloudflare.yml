@@ -1,0 +1,45 @@
+# Publishes the standalone app (public/ + the sign-in worker) to Cloudflare whenever it changes on main.
+#
+# One-time setup (repo Settings -> Secrets and variables -> Actions):
+#   CLOUDFLARE_API_TOKEN   a Cloudflare API token using the "Edit Cloudflare Workers" template
+#   CLOUDFLARE_ACCOUNT_ID  shown on the right of your Cloudflare dashboard's Workers page
+#   GOOGLE_CLIENT_ID       from Google Cloud -> APIs & Services -> Credentials (OAuth client, "Web application")
+#   GOOGLE_CLIENT_SECRET   from the same OAuth client
+#   COOKIE_SECRET          any long random string (it encrypts the sign-in cookie)
+name: Cloudflare
+
+on:
+  push:
+    branches: [main]
+    paths: [index.html, public/**, worker/**, wrangler.toml, .github/workflows/cloudflare.yml]
+  workflow_dispatch:
+
+concurrency: cloudflare
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      READY: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - name: Skip until the Cloudflare secrets are set
+        if: env.READY != 'true'
+        run: echo "::notice::Add the Cloudflare and Google secrets (see SETUP.md) to publish the standalone app."
+      - uses: actions/checkout@v5
+        if: env.READY == 'true'
+      - name: Put the app page next to its icons
+        if: env.READY == 'true'
+        run: cp index.html public/index.html
+      - uses: cloudflare/wrangler-action@v3
+        if: env.READY == 'true'
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          secrets: |
+            GOOGLE_CLIENT_ID
+            GOOGLE_CLIENT_SECRET
+            COOKIE_SECRET
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          COOKIE_SECRET: ${{ secrets.COOKIE_SECRET }}
