@@ -2,7 +2,6 @@
 <html>
 <head>
 <meta charset="utf-8">
-<base target="_top">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>G&lt;Logger</title>
 <link rel="manifest" href="/manifest.webmanifest">
@@ -491,7 +490,7 @@
     <button id="save" class="pillbtn primary">Save settings</button>
     <button id="back" class="ghost">Discard changes</button>
     <div id="setMsg" class="hint" style="text-align:center"></div>
-    <div id="account" class="setrow hidden" style="margin-top:18px">
+    <div id="account" class="setrow" style="margin-top:18px">
       <div><b>Google account</b><span id="accountEmail"></span></div>
       <button id="signout" class="pillbtn soft">Sign out</button>
     </div>
@@ -561,13 +560,11 @@
   </div>
 
 <script>
-// ===== Standalone mode =====
-// When this page is served on its own (not inside Google Apps Script), it talks to Google directly:
-// Calendar API for your log, a private Drive "app data" file for settings, and a tiny sign-in
-// service (/auth/*, see worker/worker.js) that hands out short-lived access tokens.
-// It answers the same calls as Code.gs, so the rest of the app doesn't care which one it's using.
+// ===== Google client =====
+// The app talks to Google directly: the Calendar API for your log, a private Drive "app data" file
+// for settings, and a tiny sign-in service (/auth/*, see worker/worker.js) that hands out
+// short-lived access tokens. The UI reaches all of this through server(fn, args).
 const GLOG = (() => {
-  if (window.google && google.script) return null;   // running inside Apps Script: use Code.gs
   const COLORS = {
     PALE_BLUE: ['Lavender', '#7986cb'], PALE_GREEN: ['Sage', '#33b679'], MAUVE: ['Grape', '#8e24aa'],
     PALE_RED: ['Flamingo', '#e67c73'], YELLOW: ['Banana', '#f6bf26'], ORANGE: ['Tangerine', '#f4511e'],
@@ -857,12 +854,11 @@ const GLOG = (() => {
   // Server calls run one at a time, in order, while the UI updates instantly.
   let queue = Promise.resolve();
   function server(fn, args) {
-    const p = queue.then(() => GLOG ? GLOG.call(fn, args) : new Promise((ok, fail) =>
-      google.script.run.withSuccessHandler(ok).withFailureHandler(fail)[fn](...(args || []))));
+    const p = queue.then(() => GLOG.call(fn, args));
     queue = p.catch(() => {});
-    return GLOG ? p.catch(e => { if (e instanceof GLOG.AuthError) showSignin(); throw e; }) : p;
+    return p.catch(e => { if (e instanceof GLOG.AuthError) showSignin(); throw e; });
   }
-  // Standalone sign-in screen (only ever shown when not running inside Apps Script).
+  // Sign-in screen, shown whenever Google needs you to sign in (again).
   function showSignin(msg) {
     const el = $('signin'); if (!el) return;
     if (msg) $('signinMsg').textContent = msg;
@@ -2101,10 +2097,10 @@ const GLOG = (() => {
     selected = running ? running.cat : (selected && init.settings.cats.some(c => c.name === selected) ? selected : (init.settings.cats[0] || {}).name || null);
     renderCats(); renderTimer(); if (!settingsDirty) fillSettings(); applySport();
   }
-  const cached = GLOG && GLOG.cachedInit();
+  const cached = GLOG.cachedInit();
   if (cached) applyInit(cached);   // draw what we knew last time straight away, then check with Google
   const bootSeq = seq;
-  if (GLOG) {
+  {
     $('account').classList.remove('hidden');
     $('accountEmail').textContent = GLOG.email() || 'your Google account';
     $('signout').onclick = () => { $('signout').disabled = true; GLOG.signOut(); };
@@ -2116,11 +2112,11 @@ const GLOG = (() => {
     .then(init => {
       if (seq !== bootSeq) { COLORS = init.colors; S = init.settings; renderCats(); return; }   // you already started/stopped something; keep that
       applyInit(init);
-      if (GLOG) $('accountEmail').textContent = GLOG.email() || 'your Google account';
+      $('accountEmail').textContent = GLOG.email() || 'your Google account';
       loadToday(); loadHistory();
     })
     .catch(e => {
-      if (GLOG && e instanceof GLOG.AuthError) return;   // the sign-in screen is showing
+      if (e instanceof GLOG.AuthError) return;   // the sign-in screen is showing
       if (!cached) { $('what').textContent = "Couldn't load"; $('sub').textContent = e.message; }
       else say("Couldn't reach Google: " + e.message);
     });

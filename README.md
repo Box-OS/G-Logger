@@ -1,16 +1,15 @@
 # G&lt;Logger — Google Calendar Time Logger
 
-A one-tap start/stop timer that logs how you spend your time directly to Google Calendar. Built as a Google Apps Script web app, so it runs on Google's servers with no backend, database, or hosting of its own, and works from any phone or laptop browser.
+A hold-to-start timer that logs how you spend your time straight into Google Calendar. It's an installable web app: a static front end that calls the Google Calendar API directly, plus a small serverless function for Google sign-in. Your calendar is the database, so there's no server-side storage.
 
 ## Try it
 
-**[Open G&lt;Logger](https://script.google.com/macros/s/AKfycbxrJuZHOgyapJ5-xch7WRGy6MVgpkcG3ndafGpZyFknDFQ5Y07TQqJw8CCXciXdVmq2Og/exec)**. Any Google account works, and nothing to install.
+**[Open G&lt;Logger](https://g-logger.launchbeta.workers.dev)**. Any Google account works.
 
-1. Open the link and sign in with Google.
-2. Approve Calendar access. The app is not verified by Google yet, so you'll see a warning first: choose **Advanced → Go to … (unsafe)** to continue.
-3. Add it to your home screen: on iPhone, Safari → Share → **Add to Home Screen**; on Android, Chrome → ⋮ → **Add to Home screen**.
+1. Tap **Continue with Google** and allow Calendar access. The app isn't verified by Google yet, so you'll see a warning first: choose **Advanced → Go to G&lt;Logger**.
+2. Add it to your home screen: on iPhone, Safari → Share → **Add to Home Screen**; on Android, Chrome → ⋮ → **Install app**.
 
-The app runs as *you*: it only ever touches your own calendar, and creates a calendar named **Log** on first use (changeable in Settings). Your categories and running timer are stored privately in your Google account; the developer can't see them.
+It only touches your own Google account: it creates a calendar named **Log** (changeable in Settings) and keeps your settings in a private app-data file in your Drive that it alone can see. See the [privacy policy](https://g-logger.launchbeta.workers.dev/privacy.html).
 
 ## Features
 
@@ -38,27 +37,20 @@ The app runs as *you*: it only ever touches your own calendar, and creates a cal
 
 | File | Role |
 | --- | --- |
-| `Code.gs` | Server side: serves the page (`doGet`), and exposes the timer (`start`, `stop`, `resume`, `cancel`, `setStart`), settings (`getInit`, `saveSettings`) and the log editor (`history`, `saveEntry`, `deleteEntry`), all built on `CalendarApp`. |
-| `index.html` | Client UI (vanilla HTML/CSS/JS). Calls the server through `google.script.run`. |
-| `.github/workflows/apps-script.yml` | Uploads the code to Apps Script on every push with clasp, and deploys the live version on demand. |
-| `appsscript.json` | Manifest: V8 runtime; the web app runs as the user accessing it and is open to anyone with a Google account, so each person logs to their own calendar. |
+| `index.html` | The whole app (vanilla HTML/CSS/JS). A small client (`GLOG`) talks to the Calendar REST API for sessions, keeps settings in a Drive `appDataFolder` file, and tags the running session's event so every device sees the same timer. |
+| `worker/worker.js` | Cloudflare Worker for the OAuth 2.0 authorization-code flow. The refresh token lives in an AES-GCM-encrypted, HttpOnly cookie, so nothing is stored server-side; the page gets short-lived access tokens from `/auth/token`. |
+| `public/` | Web app manifest, icons and the privacy policy. |
+| `wrangler.toml` | Serves `public/` and the worker from one origin, so the sign-in cookie is first-party. |
+| `.github/workflows/cloudflare.yml` | Publishes to Cloudflare on every push to `main`. |
 
-State (settings and the currently running timer) is stored per user in `PropertiesService`, so the timer survives closing the tab or switching devices, and every user's data stays separate.
+**Design notes**
+- **Google Calendar is the database.** Each session is a real, colour-coded event you can see in any calendar app.
+- **One timer across devices.** The running session is a calendar event marked in its private extended properties; starting checks Google first, so only one log can run at a time.
+- **Instant UI.** The app draws from an on-device cache straight away and refreshes from Google in the background; actions update the screen first and sync after.
+- **Least privilege.** Scopes are limited to Calendar, Drive app data (not your files) and your email address.
 
-## Standalone version
-
-A standalone build is in progress: the same page hosted on Cloudflare as an installable web app, signing in with
-Google OAuth and calling the Calendar API directly instead of going through Apps Script.
-
-| File | Role |
-| --- | --- |
-| `index.html` | Detects where it's running. Outside Apps Script, a small client (`GLOG`) implements the same calls as `Code.gs` against the Calendar REST API, keeps settings in a private Drive app-data file, and tags the running session's calendar event so every device sees it. |
-| `worker/worker.js` | Cloudflare Worker for the OAuth 2.0 authorization-code flow. Keeps the refresh token in an AES-GCM-encrypted HttpOnly cookie, so there is no database, and hands the page short-lived access tokens. |
-| `public/` | Web app manifest and icons for installing it on a home screen. |
-| `.github/workflows/cloudflare.yml` | Publishes the page and worker to Cloudflare on every push. |
-
-Setup steps are in [SETUP.md](SETUP.md).
+It began as a Google Apps Script web app and was rebuilt as a standalone app for speed, a real home-screen install, and a proper OAuth setup. Setup for your own copy is in [SETUP.md](SETUP.md).
 
 ## Tech
 
-Google Apps Script (V8), CalendarApp, PropertiesService, HtmlService, vanilla JavaScript, clasp and GitHub Actions. Standalone: Google Calendar and Drive REST APIs, OAuth 2.0, Cloudflare Workers, Web App Manifest.
+Vanilla JavaScript, Google Calendar and Drive REST APIs, OAuth 2.0, Cloudflare Workers, Web App Manifest, GitHub Actions.

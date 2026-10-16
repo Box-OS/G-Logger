@@ -1,6 +1,6 @@
-# Setting up the standalone G&lt;Logger
+# Running your own G&lt;Logger
 
-The standalone app is the same `index.html`, hosted on Cloudflare as a normal website you can add to your home screen.
+G&lt;Logger is a single `index.html`, hosted on Cloudflare as a normal website you can add to your home screen.
 It signs you in with Google and calls the Calendar API directly. A tiny Cloudflare Worker (`worker/worker.js`)
 handles the sign-in, so you stay logged in.
 
@@ -45,5 +45,4 @@ Then **Actions → Cloudflare → Run workflow**. The app goes live at `https://
 
 Open the address, tap **Continue with Google**, allow access. On iPhone: Safari → Share → **Add to Home Screen**.
 
-Your categories live in Apps Script's storage today, so re-enter them once in Settings.
-Your existing log is untouched: the app reads the same **Log** calendar.
+Set up your categories in Settings. If you already log to a calendar named **Log**, the app picks it up as is.
