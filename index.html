@@ -1198,7 +1198,6 @@ const GLOG = (() => {
     },
     end() {
       if (sport) return;
-      if (running) { lockedNudge(); centerSelectedCat(true); return; }
       const a = wSamples[0], z = wSamples[wSamples.length - 1];
       const v = a && z && z[0] > a[0] ? (z[1] - a[1]) / (z[0] - a[0]) : 0;    // px per ms
       const target = wOff + v * 200;                                            // fling a little further
@@ -1238,27 +1237,17 @@ const GLOG = (() => {
       }
     });
   }
-  function centerSelectedCat(smooth) {
+  function centerSelectedCat(smooth, name = selected) {
     if (!sport) {
-      const i = wItems().findIndex(x => x.dataset.name === selected);
+      const i = wItems().findIndex(x => x.dataset.name === name);
       if (i < 0) return;
       if (smooth) wheelTo(i); else { cancelAnimationFrame(wAnim); wOff = -i * ITEM; renderWheel(); }
       return;
     }
-    const cats = $('cats'), b = [...cats.querySelectorAll('.cat')].find(x => x.dataset.name === selected);
+    const cats = $('cats'), b = [...cats.querySelectorAll('.cat')].find(x => x.dataset.name === name);
     if (b) cats.scrollTo({ left: b.offsetLeft + b.offsetWidth / 2 - cats.clientWidth / 2, behavior: smooth ? 'smooth' : 'auto' });
   }
-  let lockT = 0;
-  $('cats').addEventListener('scroll', () => {
-    if (!sport) return;
-    curveCats();
-    if (running) { clearTimeout(lockT); lockT = setTimeout(() => { lockedNudge(); centerSelectedCat(true); }, 160); }   // spring back
-  }, { passive: true });
-  let lockMsgT = -1e9;
-  function lockedNudge() {
-    haptic([8, 30, 8]);
-    if (performance.now() - lockMsgT > 1500) { lockMsgT = performance.now(); say(`Stop ${running.cat} first`); }
-  }
+  $('cats').addEventListener('scroll', () => { if (sport) curveCats(); }, { passive: true });
 
   // ---------- screens (swipe between them) ----------
   const PAGES = ['timer', 'timeline', 'history', 'settings'];
@@ -1316,7 +1305,7 @@ const GLOG = (() => {
       b.lastChild.textContent = c.name;
       b.dataset.name = c.name;
       b.onclick = () => {
-        if (running && c.name !== running.cat) { lockedNudge(); return; }
+        if (running) { centerSelectedCat(true, c.name); return; }   // browsing only; what's running stays running
         if (selected !== c.name) { selected = c.name; renderTimer(); haptic(6); }
         centerSelectedCat(true);
       };
@@ -1335,8 +1324,10 @@ const GLOG = (() => {
   function renderTimer() {
     clearInterval(tick);
     if (selected && !catByName(selected)) selected = null;
-    if (running) selected = running.cat;   // the picker is locked to what's running
+    if (running) selected = running.cat;   // you can browse the picker, but what's running stays selected
+    const ended = $('catWrap').classList.contains('locked') && !running;
     $('catWrap').classList.toggle('locked', !!running);
+    if (ended) requestAnimationFrame(curveCats);   // once it stops, whatever's in the middle is selected
     document.querySelectorAll('.cat').forEach(b => b.classList.toggle('active', b.dataset.name === selected));
     placeCatHighlight();
     const dial = $('dial'), act = holdAction();
