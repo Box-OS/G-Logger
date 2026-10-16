@@ -162,6 +162,9 @@
   #sheetDur { margin:12px 6px 0; font-size:13px; color:var(--muted); min-height:18px; }
   #sheetErr { margin:8px 6px 0; font-size:13px; color:var(--danger); min-height:18px; }
   .sheet-actions { display:flex; gap:8px; margin-top:8px; }
+  #contEntry { width:100%; margin-top:6px; display:flex; align-items:center; justify-content:center; gap:8px; }
+  #contEntry svg, #peek .cont svg { width:14px; height:14px; }
+  #peek .cont { margin-left:6px; background:var(--surface); color:var(--ink); border:1px solid var(--line); display:inline-flex; align-items:center; gap:6px; }
   .sheet-actions .primary { flex:1; }
   #delEntry { color:var(--danger); }
 
@@ -551,6 +554,7 @@
       </div>
       <div id="sheetDur"></div>
       <div id="sheetErr"></div>
+      <button class="pillbtn soft hidden" id="contEntry"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>Continue logging</button>
       <div class="sheet-actions">
         <button class="pillbtn soft" id="sheetCancel">Cancel</button>
         <button class="pillbtn soft" id="delEntry">Delete</button>
@@ -753,6 +757,17 @@ const GLOG = (() => {
         .catch(e => { throw e.status === 404 || e.status === 410 ? new Error('That session is no longer in your calendar.') : e; });
       setRunning(s); store.set('glog-last', null);
       return s;
+    },
+    async continueEntry(id) {   // a stopped session runs again from its original start
+      if (await findRunning()) throw new Error('A log is already running. Stop it first.');
+      return onCal(async cal => {
+        const e = await g('GET', evUrl(cal, id)).catch(e => { throw e.status === 404 || e.status === 410 ? new Error('That entry no longer exists in your calendar.') : e; });
+        const s = parse(e, cal); delete s.end;
+        if (!S().cats.find(c => c.name === s.cat)) throw new Error(`“${s.cat}” isn't one of your categories.`);
+        await g('PATCH', evUrl(cal, id), { summary: '⏱ ' + label(s.cat, s.title), end: { dateTime: iso(Math.max(Date.now(), s.start + MIN)) }, extendedProperties: marks('running', s) });
+        store.set('glog-last', null); setRunning(s);
+        return s;
+      });
     },
     async setStart(ms) {   // move the running timer's start (for when you forgot to start it)
       const s = await findRunning();
@@ -1700,6 +1715,7 @@ const GLOG = (() => {
     $('sheetEnd').value = toLocal(e ? e.end : now);
     $('delEntry').classList.toggle('hidden', !e);
     $('delEntry').textContent = 'Delete'; delArmed = false;
+    $('contEntry').classList.toggle('hidden', !canContinue(e));
     $('sheetErr').textContent = e && !sheetCat ? `“${e.cat}” isn't one of your categories. Pick one to save.` : '';
     renderSheetCats(); updDur();
     $('sheet').classList.remove('hidden');
@@ -1722,6 +1738,30 @@ const GLOG = (() => {
   $('sheetCancel').onclick = closeSheet;
   $('sheet').addEventListener('click', e => { if (e.target === $('sheet')) closeSheet(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('sheet').classList.contains('hidden')) closeSheet(); });
+
+  // Continue: pick a stopped session back up. It runs again from its original start,
+  // so the gap between when it ended and now is counted too.
+  function canContinue(e) {
+    if (!e || e.live || running || !catByName(e.cat)) return false;
+    const now = Date.now();
+    if (e.end < now - 24 * 3600e3) return false;   // only recent sessions
+    return ![...hist, ...today].some(x => x.id !== e.id && x.start >= e.end - 60000 && x.start < now);   // and nothing logged after it
+  }
+  function continueEntry(e) {
+    if (startSync) syncStart();
+    closeSheet(); peekId = null; hideNotif();
+    const c = catByName(e.cat), my = ++seq;
+    lastStopped = null;
+    running = { id: e.id, cat: e.cat, color: c.color, title: e.title || '', start: e.start };
+    selected = e.cat;
+    hist = hist.filter(x => x.id !== e.id); today = today.filter(x => x.id !== e.id);
+    renderCats(); centerSelectedCat(false); renderTimer(); renderHistory(); renderToday();
+    show('timer'); say('Continuing ' + e.cat); haptic(10);
+    server('continueEntry', [e.id])
+      .then(s => { if (my === seq) { running = Object.assign(s, { start: running ? running.start : s.start }); renderTimer(); } loadToday(); })
+      .catch(err => { if (my === seq) { running = null; renderTimer(); } say("Couldn't continue: " + err.message); loadHistory(); loadToday(); });
+  }
+  $('contEntry').onclick = () => { if (editing) continueEntry(editing); };
 
   $('sheetSave').onclick = () => {
     const start = fromLocal($('sheetStart').value), end = fromLocal($('sheetEnd').value);
@@ -1944,6 +1984,11 @@ const GLOG = (() => {
           const ed = document.createElement('button'); ed.textContent = 'Edit';
           ed.onclick = ev => { ev.stopPropagation(); peekId = null; openSheet(e); renderToday(); };
           p.appendChild(ed);
+          if (canContinue(e)) {
+            const go = document.createElement('button'); go.className = 'cont'; go.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></svg>Continue';
+            go.onclick = ev => { ev.stopPropagation(); continueEntry(e); };
+            p.appendChild(go);
+          }
         }
         p.onclick = ev => ev.stopPropagation();
         tl.appendChild(p);
