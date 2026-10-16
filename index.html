@@ -162,6 +162,15 @@
   #sheetDur { margin:12px 6px 0; font-size:13px; color:var(--muted); min-height:18px; }
   #sheetErr { margin:8px 6px 0; font-size:13px; color:var(--danger); min-height:18px; }
   .sheet-actions { display:flex; gap:8px; margin-top:8px; }
+  /* appears only while Settings has unsaved changes; sticks to the bottom of the screen */
+  #saveBar { position:sticky; bottom:12px; z-index:8; display:flex; align-items:center; gap:8px; margin-top:8px; padding:7px 7px 7px 18px; border-radius:999px;
+    background:color-mix(in srgb, var(--surface) 86%, transparent); -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);
+    border:1px solid var(--line); box-shadow:0 12px 30px rgba(10,11,13,.16);
+    opacity:0; transform:translateY(18px) scale(.97); pointer-events:none; visibility:hidden;
+    transition:opacity .22s ease, transform .3s cubic-bezier(.2,1.2,.3,1), visibility 0s .3s; }
+  #saveBar.show { opacity:1; transform:none; pointer-events:auto; visibility:visible; transition:opacity .22s ease, transform .3s cubic-bezier(.2,1.2,.3,1); }
+  #saveBar span { flex:1; min-width:0; font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #saveBar .pillbtn { height:42px; padding:0 18px; }
   #contEntry { width:100%; margin-top:6px; display:flex; align-items:center; justify-content:center; gap:8px; }
   #contEntry svg, #peek .cont svg { width:14px; height:14px; }
   #peek .cont { margin-left:6px; background:var(--surface); color:var(--ink); border:1px solid var(--line); display:inline-flex; align-items:center; gap:6px; }
@@ -186,7 +195,6 @@
   .palette button { width:32px; height:32px; border-radius:50%; background:var(--cc); box-shadow:0 0 0 2px var(--paper), 0 0 0 0 var(--ink); }
   .palette button.on { box-shadow:0 0 0 2px var(--paper), 0 0 0 4px var(--ink); }
   .ghost { color:var(--muted); font-size:15px; font-weight:500; height:44px; width:100%; }
-  #save { width:100%; height:54px; margin-top:18px; }
 
   /* ---------- focus screen ---------- */
   #focus { position:fixed; inset:0; z-index:20; transition:clip-path .62s cubic-bezier(.65,0,.25,1); overflow:hidden; color:var(--on-f); touch-action:none; user-select:none; -webkit-user-select:none; -webkit-touch-callout:none; }
@@ -390,7 +398,8 @@
   :root[data-sport] #tabbar button { font-size:12px; }
   :root[data-sport] .entry .dur, :root[data-sport] #startedAt, :root[data-sport] #resume b, :root[data-sport] #tl .hr { font-family:var(--disp); font-weight:700; font-size:15px; }
   :root[data-sport] #todayTotal { font-size:56px; }
-  :root[data-sport] .field, :root[data-sport] .pillbtn, :root[data-sport] #resume, :root[data-sport] #adjust button, :root[data-sport] .chip, :root[data-sport] #save { border-radius:12px; }
+  :root[data-sport] .field, :root[data-sport] .pillbtn, :root[data-sport] #resume, :root[data-sport] #adjust button, :root[data-sport] .chip { border-radius:12px; }
+  :root[data-sport] #saveBar { border-radius:16px; }
   :root[data-sport] .entry, :root[data-sport] .setrow, :root[data-sport] #peek { border-radius:14px; }
   :root[data-sport] .pillbtn, :root[data-sport] #resume, :root[data-sport] #adjust button { font-family:var(--disp); font-weight:700; font-size:16px; letter-spacing:.05em; text-transform:uppercase; }
   /* swipeable category picker: the centred card is the selected one */
@@ -490,12 +499,15 @@
     <label>Categories</label>
     <div id="catRows"></div>
     <button id="addCat" class="ghost">+ Add category</button>
-    <button id="save" class="pillbtn primary">Save settings</button>
-    <button id="back" class="ghost">Discard changes</button>
     <div id="setMsg" class="hint" style="text-align:center"></div>
     <div id="account" class="setrow" style="margin-top:18px">
       <div><b>Google account</b><span id="accountEmail"></span></div>
       <button id="signout" class="pillbtn soft">Sign out</button>
+    </div>
+    <div id="saveBar" role="region" aria-label="Unsaved changes" aria-hidden="true">
+      <span>Unsaved changes</span>
+      <button id="back" class="pillbtn soft">Discard</button>
+      <button id="save" class="pillbtn primary">Save</button>
     </div>
   </section>
   </div>
@@ -2082,7 +2094,7 @@ const GLOG = (() => {
     const syncIcon = () => { ib.innerHTML = svgIcon(wrap.dataset.icon); ipal.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.icon === wrap.dataset.icon)); };
     Object.keys(ICONS).forEach(k => {
       const b = document.createElement('button'); b.dataset.icon = k; b.setAttribute('aria-label', k); b.innerHTML = svgIcon(k);
-      b.onclick = () => { wrap.dataset.icon = k; syncIcon(); ipal.classList.add('hidden'); settingsDirty = true; };
+      b.onclick = () => { wrap.dataset.icon = k; syncIcon(); ipal.classList.add('hidden'); checkDirty(); };
       ipal.appendChild(b);
     });
     ib.onclick = () => ipal.classList.toggle('hidden');
@@ -2138,7 +2150,7 @@ const GLOG = (() => {
         grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', up); grip.removeEventListener('pointercancel', up);
         const before = wrap.getBoundingClientRect().top;
         rows.forEach(r => { r.style.transition = 'none'; r.style.transform = ''; });
-        if (to !== i0) { box.insertBefore(wrap, to > i0 ? rows[to].nextSibling : rows[to]); settingsDirty = true; }
+        if (to !== i0) { box.insertBefore(wrap, to > i0 ? rows[to].nextSibling : rows[to]); checkDirty(); }
         const after = wrap.getBoundingClientRect().top;   // glide the dropped row into its slot
         wrap.style.transform = `translateY(${before - after}px)`;
         wrap.getBoundingClientRect();
@@ -2154,10 +2166,22 @@ const GLOG = (() => {
     $('catRows').innerHTML = '';
     S.cats.forEach(c => $('catRows').appendChild(catRow(c)));
     $('setMsg').textContent = '';
-    settingsDirty = false;
+    checkDirty();
   }
-  $('settings').addEventListener('input', () => { settingsDirty = true; });
-  $('settings').addEventListener('click', e => { if (e.target.closest('.palette button, .x, #addCat')) settingsDirty = true; });
+  // The Save / Discard bar shows only while what's on screen differs from what's saved,
+  // so undoing a change by hand makes it go away again.
+  const formState = () => JSON.stringify({ calendar: $('calName').value.trim(), cats: [...$('catRows').children].map(r => [r.querySelector('input').value.trim(), r.dataset.color, r.dataset.icon]) });
+  const savedState = () => JSON.stringify({ calendar: S.calendar, cats: S.cats.map(c => [c.name, c.color, iconOf(c)]) });
+  function checkDirty() {
+    if (!S) return;
+    const was = settingsDirty;
+    settingsDirty = formState() !== savedState();
+    $('saveBar').classList.toggle('show', settingsDirty);
+    $('saveBar').setAttribute('aria-hidden', String(!settingsDirty));
+    if (settingsDirty && !was) haptic(6);
+  }
+  $('settings').addEventListener('input', checkDirty);
+  $('settings').addEventListener('click', () => setTimeout(checkDirty, 0));
   $('back').onclick = () => { fillSettings(); say('Changes discarded'); };
   $('addCat').onclick = () => { const r = catRow({ name: '', color: 'GRAY', icon: 'star' }); $('catRows').appendChild(r); r.querySelector('input').focus(); };
   $('save').onclick = () => {
@@ -2166,7 +2190,7 @@ const GLOG = (() => {
     server('saveSettings', [{ calendar: $('calName').value, cats }])
       .then(init => { S = init.settings; histShown = ''; renderCats(); renderTimer(); fillSettings(); centerSelectedCat(false); say('Settings saved'); })
       .catch(e => { $('setMsg').textContent = "Couldn't save settings: " + e.message; })
-      .finally(() => { $('save').disabled = false; $('save').textContent = 'Save settings'; });
+      .finally(() => { $('save').disabled = false; $('save').textContent = 'Save'; });
   };
 
   // ---------- boot ----------
