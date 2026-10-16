@@ -17,11 +17,11 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root { --sheen:rgba(255,255,255,.35); --onSel:var(--ink); --onSelMix:78%; --glow:34%; --paper:#F1F2F4; --surface:#FFFFFF; --ink:#16181C; --muted:#6A707A; --line:rgba(22,24,28,.09); --danger:#C5221F; color-scheme:light; }
+  :root { --sheen:rgba(255,255,255,.35); --onSel:var(--ink); --onSelMix:78%; --glow:34%; --paper:#F1F2F4; --surface:#FFFFFF; --ink:#16181C; --muted:#6A707A; --line:rgba(22,24,28,.09); --danger:#C5221F; --up:#1E8E3E; color-scheme:light; }
   @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --sheen:rgba(255,255,255,.05); --onSel:#FFFFFF; --onSelMix:62%; --glow:46%; --paper:#121316; --surface:#1D1F23; --ink:#F1F2F4; --muted:#8E95A0; --line:rgba(241,242,244,.08); --danger:#F28B82; color-scheme:dark; }
+    :root:not([data-theme="light"]) { --sheen:rgba(255,255,255,.05); --onSel:#FFFFFF; --onSelMix:62%; --glow:46%; --paper:#121316; --surface:#1D1F23; --ink:#F1F2F4; --muted:#8E95A0; --line:rgba(241,242,244,.08); --danger:#F28B82; --up:#5DD27E; color-scheme:dark; }
   }
-  :root[data-theme="dark"] { --sheen:rgba(255,255,255,.05); --onSel:#FFFFFF; --onSelMix:62%; --glow:46%; --paper:#121316; --surface:#1D1F23; --ink:#F1F2F4; --muted:#8E95A0; --line:rgba(241,242,244,.08); --danger:#F28B82; color-scheme:dark; }
+  :root[data-theme="dark"] { --sheen:rgba(255,255,255,.05); --onSel:#FFFFFF; --onSelMix:62%; --glow:46%; --paper:#121316; --surface:#1D1F23; --ink:#F1F2F4; --muted:#8E95A0; --line:rgba(241,242,244,.08); --danger:#F28B82; --up:#5DD27E; color-scheme:dark; }
 
   * { box-sizing:border-box; }
   html { -webkit-text-size-adjust:100%; height:100%; }
@@ -50,7 +50,7 @@
   @media (pointer:coarse) { #tabbar { padding-bottom:max(26px, env(safe-area-inset-bottom)); } #msg { bottom:calc(104px + env(safe-area-inset-bottom)) !important; } }
   #tabbar { position:relative; }
   #tabInd {
-    position:absolute; z-index:0; top:6px; left:6px; bottom:max(8px, env(safe-area-inset-bottom)); width:calc((100% - 12px) / 4);
+    position:absolute; z-index:0; top:6px; left:6px; bottom:max(8px, env(safe-area-inset-bottom)); width:calc((100% - 12px) / 5);
     border-radius:16px; background:color-mix(in srgb, var(--ink) 8%, transparent); pointer-events:none;
     transform:translateX(calc(var(--f, 0) * 100%)); will-change:transform;
   }
@@ -235,6 +235,44 @@
   #fmeta { font-size:15px; opacity:.75; margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   #fhint { font-size:13px; opacity:.6; margin-bottom:12px; }
   #fcat { margin:0; font-size:clamp(56px, 17vw, 116px); font-weight:800; line-height:.88; letter-spacing:-.05em; overflow-wrap:anywhere; }
+
+
+  /* ---------- stats ---------- */
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .tile, .scard { background:var(--surface); border:1px solid var(--line); border-radius:20px; }
+  .tile { padding:14px 16px; min-width:0; }
+  .tile .k { font-size:12.5px; font-weight:600; color:var(--muted); }
+  .tile .v { margin-top:4px; font-size:27px; font-weight:700; letter-spacing:-.035em; line-height:1.1; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .tile .d, .srow .d { font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .tile .d { margin-top:3px; }
+  .up { color:var(--up) !important; }
+  .scard { margin-top:12px; padding:16px; }
+  .scard h3 { display:flex; justify-content:space-between; align-items:baseline; margin:0 0 14px; font-size:15px; font-weight:600; }
+  .scard h3 span { font-size:12.5px; font-weight:500; color:var(--muted); }
+  .wk { display:flex; align-items:flex-end; gap:5px; height:132px; }
+  .wk .col { flex:1; min-width:0; height:100%; display:flex; flex-direction:column; justify-content:flex-end; }
+  .wk .bar { display:flex; flex-direction:column-reverse; border-radius:6px; overflow:hidden; min-height:2px; background:color-mix(in srgb, var(--ink) 8%, transparent); }
+  .wk .bar i { display:block; background:var(--cc); }
+  .wk .col.now .bar { box-shadow:0 0 0 2px var(--paper), 0 0 0 3.5px var(--ink); }
+  .wkl { display:flex; gap:5px; margin-top:7px; }
+  .wkl span { flex:1; min-width:0; text-align:center; white-space:nowrap; overflow:visible; font-size:10px; letter-spacing:-.01em; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .wkv { display:flex; gap:5px; margin-bottom:4px; }
+  .wkv span { flex:1; min-width:0; text-align:center; font-size:10px; font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .srow { display:grid; grid-template-columns:10px minmax(0,1fr) auto; column-gap:10px; align-items:center; padding:7px 0; }
+  .srow + .srow { border-top:1px solid var(--line); }
+  .srow .dot { width:10px; height:10px; border-radius:50%; background:var(--cc); }
+  .srow b { font-size:15px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .srow .h { text-align:right; font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .srow .meter { grid-column:2 / 4; height:5px; margin-top:6px; border-radius:999px; background:color-mix(in srgb, var(--ink) 7%, transparent); overflow:hidden; }
+  .srow .meter i { display:block; height:100%; border-radius:999px; background:var(--cc); }
+  .srow .d { grid-column:2 / 4; margin-top:3px; }
+  .facts { display:grid; grid-template-columns:1fr 1fr; gap:14px 10px; }
+  .facts div { min-width:0; }
+  .facts .wide { grid-column:1 / -1; }
+  .facts b { display:block; font-size:20px; font-weight:700; letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
+  .facts span { font-size:12.5px; color:var(--muted); }
+  #copyStats { width:100%; margin-top:14px; }
+  .snote { margin:14px 6px 0; font-size:12.5px; line-height:1.45; color:var(--muted); }
 
   /* ---------- today timeline ---------- */
   #today { margin-top:0; }
@@ -488,6 +526,11 @@
   </section>
 
   <!-- ===== settings ===== -->
+  <section class="page" id="stats">
+    <div class="phead"><h1>Stats</h1></div>
+    <div id="statsBody"><p class="empty">Loading your stats…</p></div>
+  </section>
+
   <section class="page" id="settings">
     <div class="phead"><h1>Settings</h1></div>
     <div class="setrow">
@@ -532,6 +575,7 @@
     <button data-view="timer" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M10 2.5h4"/></svg>Log</button>
     <button data-view="timeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3v18"/><rect x="5.5" y="5" width="5" height="6" rx="2.5" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="2.5" fill="currentColor" stroke="none"/><path d="M14 8h6M14 16h4"/></svg>Today</button>
     <button data-view="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>History</button>
+    <button data-view="stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V12M10 20V6M15 20v-9M20 20V4"/></svg>Stats</button>
     <button data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Settings</button>
   </nav>
 
@@ -1250,8 +1294,8 @@ const GLOG = (() => {
   $('cats').addEventListener('scroll', () => { if (sport) curveCats(); }, { passive: true });
 
   // ---------- screens (swipe between them) ----------
-  const PAGES = ['timer', 'timeline', 'history', 'settings'];
-  const TITLES = { timer: 'Log', timeline: 'Today', history: 'History', settings: 'Settings' };
+  const PAGES = ['timer', 'timeline', 'history', 'stats', 'settings'];
+  const TITLES = { timer: 'Log', timeline: 'Today', history: 'History', stats: 'Stats', settings: 'Settings' };
   const pager = $('pager');
   let tlScrolled = false, settingsDirty = false;
   function setActive(v) {
@@ -1262,6 +1306,7 @@ const GLOG = (() => {
     if (v === 'history') loadHistory();
     if (v === 'timeline') { loadToday(); if (!tlScrolled) { tlScrolled = true; scrollTimelineToNow(); } }
     if (v === 'settings' && !settingsDirty) fillSettings();
+    if (v === 'stats') loadStats();
   }
   function show(v, instant) {
     const i = PAGES.indexOf(v);
@@ -2169,6 +2214,149 @@ const GLOG = (() => {
     else { vStart += e.deltaY * vSpan / lineLen(); clampView(); redraw(); }
   }, { passive: false });
   addEventListener('resize', () => { if (view === 'timeline') redraw(); });
+
+
+  // ---------- stats ----------
+  // Progress over time, worked out on the phone from the sessions in your Log calendar (past year).
+  const STATS_KEY = 'glog-stats1', DAY = 864e5;
+  let statsData = null, statsLoading = false, statsShown = '';
+  try { const c = JSON.parse(localStorage.getItem(STATS_KEY) || 'null'); if (c && Array.isArray(c.list)) statsData = c.list; } catch (e) {}
+  function loadStats() {
+    if (statsData) renderStats();
+    if (statsLoading) return;
+    statsLoading = true;
+    server('history', [dayStart(Date.now() - 364 * DAY), Date.now() + 60000])
+      .then(list => {
+        statsData = list.map(x => ({ cat: x.cat, color: x.color, start: x.start, end: x.end }));
+        try { localStorage.setItem(STATS_KEY, JSON.stringify({ at: Date.now(), list: statsData })); } catch (e) {}
+        if (view === 'stats') renderStats();
+      })
+      .catch(e => { if (!statsData) $('statsBody').innerHTML = ''; say("Couldn't load stats: " + e.message); })
+      .finally(() => { statsLoading = false; });
+  }
+  const addDays = (ms, n) => { const d = new Date(ms); d.setDate(d.getDate() + n); return d.getTime(); };   // safe across daylight-saving changes
+  const weekStart = ms => { const d = new Date(dayStart(ms)); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return d.getTime(); };   // Monday
+  const pct = (a, b) => (b > 0 ? Math.round((a - b) / b * 100) : null);
+  const fmtH = ms => (ms >= 36e5 * 10 ? Math.round(ms / 36e5) + 'h' : fmtDur(ms));
+  function delta(p, what) {
+    if (p == null) return `<span class="d">${what ? 'nothing to compare with yet' : '&nbsp;'}</span>`;
+    const t = p > 0 ? `▲ ${p}%` : p < 0 ? `▼ ${-p}%` : 'same';
+    return `<span class="d${p > 0 ? ' up' : ''}">${t} ${what ? 'vs ' + what : ''}</span>`;
+  }
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  function renderStats() {
+    const now = Date.now(), box = $('statsBody');
+    const items = statsData.filter(e => e.end > e.start);
+    if (running) items.push({ cat: running.cat, color: running.color, start: running.start, end: now, live: true });
+    const key = JSON.stringify(items.length) + (items.length ? items[items.length - 1].end : 0) + h24 + Math.floor(now / 6e4);
+    if (key === statsShown) return;
+    statsShown = key;
+    if (!items.length) { box.innerHTML = '<p class="empty">Log a few sessions and your progress will show up here.</p>'; return; }
+
+    const sum = (from, to, f) => items.reduce((t, e) => (f && !f(e) ? t : t + Math.max(0, Math.min(e.end, to) - Math.max(e.start, from))), 0);
+    const colorOf = name => (catByName(name) || {}).color || (items.find(e => e.cat === name) || {}).color || 'GRAY';
+    // time per calendar day (sessions crossing midnight are split)
+    const perDay = new Map();
+    items.forEach(e => { for (let a = e.start; a < e.end;) { const d0 = dayStart(a), b = Math.min(e.end, addDays(d0, 1)); perDay.set(d0, (perDay.get(d0) || 0) + b - a); a = b; } });
+
+    // headline numbers
+    const today = dayStart(now), ws = weekStart(now);
+    const thisWeek = sum(ws, now), lastWeekSoFar = sum(addDays(ws, -7), addDays(now, -7));
+    const m28 = addDays(today, -27), p28 = addDays(m28, -28);
+    const avg28 = sum(m28, now) / 28, avgPrev = sum(p28, m28) / 28;
+    let streak = 0;
+    for (let d = perDay.get(today) ? today : addDays(today, -1); perDay.get(d); d = addDays(d, -1)) streak++;
+    let best = 0, run = 0, prevD = null;
+    [...perDay.keys()].sort((a, b) => a - b).forEach(d => { run = prevD != null && addDays(prevD, 1) === d ? run + 1 : 1; best = Math.max(best, run); prevD = d; });
+    const done = items.filter(e => !e.live);
+    const sess = (from, to) => done.filter(e => e.start >= from && e.start < to);
+    const avgLen = l => (l.length ? l.reduce((t, e) => t + e.end - e.start, 0) / l.length : 0);
+    const s28 = sess(m28, now + 1), sPrev = sess(p28, m28);
+
+    // weekly bars, stacked by category
+    const W = 12, weeks = [];
+    for (let i = W - 1; i >= 0; i--) {
+      const a = addDays(ws, -7 * i), b = addDays(a, 7), byCat = {};
+      items.forEach(e => { const o = Math.max(0, Math.min(e.end, b) - Math.max(e.start, a)); if (o) byCat[e.cat] = (byCat[e.cat] || 0) + o; });
+      weeks.push({ a, byCat, total: Object.values(byCat).reduce((t, v) => t + v, 0) });
+    }
+    const maxW = Math.max(...weeks.map(w => w.total), 1), order = S.cats.map(c => c.name);
+    const rank = n => (order.indexOf(n) < 0 ? 99 : order.indexOf(n));
+    const bars = weeks.map((w, i) => {
+      const segs = Object.entries(w.byCat).sort((x, y) => rank(x[0]) - rank(y[0]))
+        .map(([c, v]) => `<i style="--cc:${hex(colorOf(c))};height:${(v / w.total * 100).toFixed(2)}%"></i>`).join('');
+      return `<div class="col${i === W - 1 ? ' now' : ''}"><div class="bar" style="height:${Math.max(1.5, w.total / maxW * 100).toFixed(2)}%">${segs}</div></div>`;
+    }).join('');
+    const vals = weeks.map(w => `<span>${w.total >= 36e5 ? Math.round(w.total / 36e5) + 'h' : w.total ? Math.round(w.total / 6e4) + 'm' : ''}</span>`).join('');
+    const labels = weeks.map((w, i) => `<span>${(W - 1 - i) % 2 ? '' : new Date(w.a).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>`).join('');   // every other week, so dates fit
+
+    // categories, last 4 weeks vs the 4 before
+    const cats = [...new Set(items.map(e => e.cat))].map(c => ({ c, now: sum(m28, now, e => e.cat === c), before: sum(p28, m28, e => e.cat === c) }))
+      .filter(x => x.now || x.before).sort((x, y) => y.now - x.now);
+    const maxC = Math.max(...cats.map(x => x.now), 1);
+    const catRows = cats.map(x => {
+      const diff = x.now - x.before;
+      const d = !x.before ? 'new in the last 4 weeks' : diff === 0 ? 'same as the 4 weeks before' : `${diff > 0 ? '+' : '−'}${fmtDur(Math.abs(diff))} vs the 4 weeks before`;
+      return `<div class="srow" style="--cc:${hex(colorOf(x.c))}"><span class="dot"></span><b>${esc(x.c)}</b><span class="h">${fmtH(x.now)}</span>
+        <div class="meter"><i style="width:${(x.now / maxC * 100).toFixed(1)}%"></i></div><span class="d${diff > 0 ? ' up' : ''}">${d}</span></div>`;
+    }).join('');
+
+    // since the first session
+    const first = Math.min(...items.map(e => e.start)), total = sum(first, now), activeDays = perDay.size;
+    const longest = done.reduce((m, e) => Math.max(m, e.end - e.start), 0);
+    const spanDays = Math.round((today - dayStart(first)) / DAY) + 1;
+    const firstLabel = new Date(first).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    let trend = '';
+    if (spanDays >= 28) {   // only meaningful once there's a month of data
+      const f0 = dayStart(first), early = sum(f0, addDays(f0, 14)) / 14, late = sum(addDays(today, -13), now) / 14;
+      trend = `<div class="wide"><b>${fmtDur(early)} → ${fmtDur(late)}</b><span>a day: first 2 weeks → last 2 weeks</span></div>`;
+    }
+
+    box.innerHTML = `
+      <div class="tiles">
+        <div class="tile"><div class="k">This week</div><div class="v">${fmtDur(thisWeek)}</div>${delta(pct(thisWeek, lastWeekSoFar), 'this time last week')}</div>
+        <div class="tile"><div class="k">Daily average · 4 wks</div><div class="v">${fmtDur(avg28)}</div>${delta(pct(avg28, avgPrev), 'the 4 weeks before')}</div>
+        <div class="tile"><div class="k">Streak</div><div class="v">${streak} day${streak === 1 ? '' : 's'}</div><span class="d">best ${best} day${best === 1 ? '' : 's'}</span></div>
+        <div class="tile"><div class="k">Avg session · 4 wks</div><div class="v">${fmtDur(avgLen(s28))}</div>${delta(sPrev.length && s28.length ? pct(avgLen(s28), avgLen(sPrev)) : null, 'the 4 weeks before')}</div>
+      </div>
+      <div class="scard"><h3>Hours per week<span>last ${W} weeks</span></h3><div class="wkv">${vals}</div><div class="wk">${bars}</div><div class="wkl">${labels}</div></div>
+      <div class="scard"><h3>By category<span>last 4 weeks</span></h3>${catRows || '<p class="d">Nothing in the last 4 weeks.</p>'}</div>
+      <div class="scard"><h3>Since your first log<span>${firstLabel}</span></h3>
+        <div class="facts">
+          <div><b>${fmtH(total)}</b><span>logged in total</span></div>
+          <div><b>${done.length}</b><span>sessions</span></div>
+          <div><b>${activeDays} / ${spanDays}</b><span>days with a log</span></div>
+          <div><b>${fmtDur(longest)}</b><span>longest session</span></div>
+          ${trend}
+        </div>
+        <button id="copyStats" class="pillbtn soft">Copy summary</button>
+      </div>
+      <p class="snote">Counts the time logged in your G&lt;Logger calendar over the past year. Time you didn't log isn't included, so this shows how your logged time changes while you use the app.</p>`;
+
+    $('copyStats').onclick = () => {
+      const top = cats.filter(x => x.now).slice(0, 3).map(x => `${x.c} ${fmtH(x.now)}`).join(', ');
+      const pctTxt = (p, w) => (p == null ? '' : ` (${p >= 0 ? '+' : ''}${p}% vs ${w})`);
+      const lines = [
+        `G<Logger stats since ${firstLabel}:`,
+        `- ${fmtH(total)} logged across ${done.length} sessions on ${activeDays} of ${spanDays} days`,
+        `- This week: ${fmtDur(thisWeek)}${pctTxt(pct(thisWeek, lastWeekSoFar), 'this time last week')}`,
+        `- Daily average, last 4 weeks: ${fmtDur(avg28)}${pctTxt(pct(avg28, avgPrev), 'the 4 weeks before')}`,
+        `- Current streak: ${streak} days (best ${best})`,
+        `- Average session, last 4 weeks: ${fmtDur(avgLen(s28))}; longest session: ${fmtDur(longest)}`,
+      ];
+      if (spanDays >= 28) { const f0 = dayStart(first); lines.push(`- Daily logged time: ${fmtDur(sum(f0, addDays(f0, 14)) / 14)} in the first 2 weeks → ${fmtDur(sum(addDays(today, -13), now) / 14)} in the last 2 weeks`); }
+      if (top) lines.push(`- Top categories, last 4 weeks: ${top}`);
+      const txt = lines.join('\n');
+      const fallback = () => {   // older browsers / non-https
+        const ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove();
+        if (!ok) throw new Error();
+      };
+      (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).catch(fallback).then(() => say('Summary copied')).catch(() => say("Couldn't copy"));
+      haptic(8);
+    };
+  }
 
   // ---------- settings ----------
   function catRow(c) {

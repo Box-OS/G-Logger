@@ -27,6 +27,9 @@ It only touches your own Google account: it creates a calendar named **Log** (ch
 - **Today timeline**: a zoomable vertical line of today's sessions.
 - **History**: per-day totals, tap to edit, swipe left to delete (with undo), or add an entry you forgot to time.
 
+**Stats**
+- Weekly hours chart (stacked by category), this-week and 4-week trends, streaks, average session length, per-category changes, and a one-tap copyable summary.
+
 **Feel**
 - Swipeable Log, Today, History and Settings screens.
 - Instant UI with background saves, haptics, light and dark mode, and an optional **Sport mode**.
